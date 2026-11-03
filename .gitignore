@@ -1,0 +1,17 @@
+node_modules/
+client/dist/
+npm-debug.log*
+
+# Configuración local (contraseñas)
+server/.env
+.env
+
+# Archivos subidos por los usuarios (se respaldan aparte, no van en git)
+server/storage/*
+!server/storage/vistas/
+server/storage/vistas/*
+!server/storage/vistas/img/
+server/storage/vistas/img/*
+!server/storage/vistas/img/usuarios/
+server/storage/vistas/img/usuarios/*
+!server/storage/vistas/img/usuarios/default/

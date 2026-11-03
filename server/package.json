@@ -1,0 +1,26 @@
+{
+  "name": "inventario-ti-server",
+  "version": "1.0.0",
+  "description": "API del Sistema de Inventario TI",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.9",
+    "express": "^4.22.3",
+    "jsonwebtoken": "^9.0.3",
+    "mssql": "^11.0.2",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6",
+    "net-snmp": "^3.29.2"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
