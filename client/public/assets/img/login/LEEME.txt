@@ -1,6 +1,6 @@
 Coloca aquí el logo y el fondo de la pantalla de inicio de sesión:
 
-  logo.png  -> logo que aparece sobre el formulario
+  nidec.png  -> logo que aparece sobre el formulario
   bg.jpg    -> imagen de fondo
 
 Son los mismos archivos que tenía la versión PHP en assets/img/login/.

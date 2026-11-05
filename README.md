@@ -145,7 +145,7 @@ Para usar MySQL/MariaDB en lugar de SQL Server: `DB_CLIENT=mysql`, `DB_PORT=3306
 ### Archivos subidos y logo
 
 - Los archivos se guardan en `server/storage/` (o en la carpeta de `STORAGE_DIR`).
-- Logo y fondo del login: copia `logo.png` y `bg.jpg` a `client/public/assets/img/login/` y vuelve a ejecutar `npm run build`.
+- Logo y fondo del login: copia `nidec.png` y `bg.jpg` a `client/public/assets/img/login/` y vuelve a ejecutar `npm run build`.
 
 ## Modo sin servidor (para probar solo el frontend)
 
