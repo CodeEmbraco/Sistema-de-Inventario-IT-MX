@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 // o Vite se reenvía las peticiones a sí mismo en un ciclo infinito (lentitud y error 500).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ''); // lee client/.env y client/.env.development
-  const API = env.VITE_API_TARGET || 'http://localhost:3001';
+  const API = env.VITE_API_TARGET || 'http://localhost:8007';
 
   return {
     plugins: [react()],
