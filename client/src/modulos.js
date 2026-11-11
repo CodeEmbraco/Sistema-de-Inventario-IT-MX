@@ -26,6 +26,7 @@ const camposComputo = {
   procesador: t('Procesador', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: Intel Core i5-1245U' }),
   hd: t('HD', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: 512 GB SSD' }),
   ram: t('RAM', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: 16 GB' }),
+  numero_serie: t('Número de serie', { requerido: true, unico: true, enTabla: true }),
   vigencia: f('Vigencia', { enTabla: true }),
   adaptador_cargador: t('Adaptador cargador', { sugerir: true, enTabla: true, placeholder: 'Ej: Dell 65W USB-C' }),
   numero_ticket: t('Número de ticket', { enTabla: true, placeholder: 'Ej: INC-1001' }),

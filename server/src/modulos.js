@@ -24,6 +24,7 @@ const camposComputo = {
   procesador: texto(150, { requerido: true, sugerir: true }),
   hd: texto(50, { requerido: true, sugerir: true }),
   ram: texto(50, { requerido: true, sugerir: true }),
+  numero_serie: texto(100, { requerido: true, unico: true }),
   vigencia: fecha(),
   adaptador_cargador: texto(150, { sugerir: true }),
   numero_ticket: texto(50),
