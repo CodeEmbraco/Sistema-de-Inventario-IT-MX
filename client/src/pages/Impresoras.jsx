@@ -19,6 +19,7 @@ import {
 } from '../components/ui.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Icono from '../components/Icono.jsx';
 
 const BASE = '/api/impresoras';
 const VACIO = { id: null, nombre: '', marca: '', modelo: '', serie: '', ubicacion: '', ip: '', activo: true };
@@ -259,11 +260,14 @@ export default function Impresoras() {
 
   return (
     <PageCard
-      title="Administrar Impresoras"
+      eyebrow="Inventario · Impresión"
+      title="Impresoras"
+      icon="impresora"
+      subtitle="Estado de las impresoras de la planta y nivel de tóner por SNMP."
       action={
         puedeEditar ? (
-          <button type="button" className="btn btn-primary btn-round" onClick={abrirNuevo}>
-            <i className="fa fa-plus me-1" /> Agregar Impresora
+          <button type="button" className="btn btn-nidec" onClick={abrirNuevo}>
+            <Icono nombre="mas" size={18} /> Agregar impresora
           </button>
         ) : (
           <SoloLectura />

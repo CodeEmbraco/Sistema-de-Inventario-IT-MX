@@ -27,8 +27,8 @@ export const USUARIOS_DEMO = [
   { region_id: 2, nombre: 'Técnico Atlanta', usuario: 'tecnico', password: 'tecnico123', perfil: 'Usuario' },
 ];
 
-const CLAVE_DB = 'inventario-ti.sin-servidor.v3';
-const CLAVE_SESION = 'inventario-ti.sin-servidor.sesion.v3';
+const CLAVE_DB = 'inventario-ti.sin-servidor.v5';
+const CLAVE_SESION = 'inventario-ti.sin-servidor.sesion.v5';
 const EXT_IMAGEN = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -83,19 +83,20 @@ function semilla() {
   // ---- México
   agregar('celulares', 1, { numero_telefono: '442 123 4567', usuario_asignado: 'Ana Torres', departamento: 'Calidad', marca: 'Samsung', modelo: 'Galaxy A54', numero_serie: 'R58N10AA1', imei: '356789012345671', responsiva: null, fecha_asignacion: enDias(-40), numero_ticket: 'INC-1001', asignado: 1 });
   agregar('celulares', 1, { numero_telefono: null, usuario_asignado: null, departamento: null, marca: 'Apple', modelo: 'iPhone 13', numero_serie: 'F17XK2', imei: '353912110000002', responsiva: null, fecha_asignacion: null, numero_ticket: null, asignado: 0 });
-  agregar('computo_administrativo', 1, { tipo_equipo: 'LAPTOP', hostname: 'MX-ADM-L001', usuario_asignado: 'María López', departamento: 'Finanzas', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i5-1245U', hd: '512 GB SSD', ram: '16 GB', vigencia: enDias(500), adaptador_cargador: 'Dell 65W USB-C', numero_ticket: 'INC-1010', asignado: 1 });
-  agregar('computo_administrativo', 1, { tipo_equipo: 'PC', hostname: 'MX-ADM-P014', usuario_asignado: null, departamento: 'Recursos Humanos', sistema_operativo: 'Windows 10 Pro', procesador: 'Intel Core i5-8350U', hd: '256 GB SSD', ram: '8 GB', vigencia: enDias(-15), adaptador_cargador: 'HP 45W', numero_ticket: null, asignado: 0 });
-  agregar('computo_administrativo', 1, { tipo_equipo: 'PC', hostname: 'MX-ADM-P003', usuario_asignado: 'Jorge Ramírez', departamento: 'Compras', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i7-12700', hd: '1 TB SSD', ram: '32 GB', vigencia: enDias(800), adaptador_cargador: null, numero_ticket: 'INC-1015', asignado: 1 });
-  agregar('computo_industrial', 1, { hostname: 'MX-IND-L1-01', usuario_asignado: 'Operador Línea 1', departamento: 'Producción', sistema_operativo: 'Windows 10 IoT', procesador: 'Intel Celeron J6412', hd: '128 GB SSD', ram: '8 GB', vigencia: enDias(20), adaptador_cargador: 'Fuente 24V DIN', numero_ticket: 'INC-1022', asignado: 1 });
-  agregar('monitores', 1, { hostname: 'AREYLINEA', usuario_asignado: 'Luis Gómez', fecha_asignacion: enDias(-100), departamento: 'Producción', ubicacion: 'Línea 1', marca: 'Dell', modelo: 'P2422H', numero_serie: 'CN-0D9F2', vigencia: enDias(700), numero_ticket: null, asignado: 1 });
-  agregar('proyectores', 1, { hostname: null, usuario_asignado: 'Sala de juntas A', fecha_asignacion: enDias(-200), departamento: 'Administración', ubicacion: 'Sala A', marca: 'Epson', modelo: 'EB-X51', numero_serie: 'X5L1A001', vigencia: enDias(300), numero_ticket: null, asignado: 1 });
+  const eq = (o) => ({ hostname: null, numero_ticket: null, responsiva: null, ...o });
+  agregar('computo_administrativo', 1, eq({ tipo_equipo: 'LAPTOP', hostname: 'MX-ADM-L001', usuario_asignado: 'María López', departamento: 'Finanzas', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i5-1245U', hd: '512 GB SSD', ram: '16 GB', numero_serie: '5CG1234XYZ', vigencia: enDias(500), modelo: 'Latitude 5430', marca: 'Dell', adaptador_cargador: 'Dell 65W USB-C', numero_ticket: 'INC-1010', asignado: 1 }));
+  agregar('computo_administrativo', 1, eq({ tipo_equipo: 'PC', hostname: 'MX-ADM-P014', usuario_asignado: 'Almacén general', departamento: 'Recursos Humanos', sistema_operativo: 'Windows 10 Pro', procesador: 'Intel Core i5-8500', hd: '256 GB SSD', ram: '8 GB', numero_serie: 'MXL9876ABC', vigencia: enDias(-15), modelo: 'ProDesk 400 G5', marca: 'HP', adaptador_cargador: 'Fuente interna 180W', asignado: 0 }));
+  agregar('computo_administrativo', 1, eq({ tipo_equipo: 'PC', hostname: 'MX-ADM-P003', usuario_asignado: 'Jorge Ramírez', departamento: 'Compras', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i7-12700', hd: '1 TB SSD', ram: '32 GB', numero_serie: 'PF3XY12Z', vigencia: enDias(12), modelo: 'ThinkCentre M70q', marca: 'Lenovo', adaptador_cargador: 'Lenovo 65W', numero_ticket: 'INC-1015', asignado: 1 }));
+  agregar('computo_industrial', 1, eq({ hostname: 'MX-IND-L1-01', usuario_asignado: 'Operador Línea 1', departamento: 'Producción', sistema_operativo: 'Windows 10 IoT', procesador: 'Intel Celeron J6412', hd: '128 GB SSD', ram: '8 GB', numero_serie: 'IPC-0044581', vigencia: enDias(20), modelo: 'Nuvo-9006', marca: 'Neousys', adaptador_cargador: 'Fuente 24V DIN', numero_ticket: 'INC-1022', asignado: 1 }));
+  agregar('monitores', 1, eq({ hostname: 'MX-ADM-P003', usuario_asignado: 'Jorge Ramírez', departamento: 'Compras', sistema_operativo: 'N/A', procesador: 'N/A', hd: 'N/A', ram: 'N/A', numero_serie: 'CN-0D9F2', vigencia: enDias(700), modelo: 'P2422H', marca: 'Dell', adaptador_cargador: 'Cable de poder interno', asignado: 1 }));
+  agregar('proyectores', 1, eq({ usuario_asignado: 'Sala de juntas A', departamento: 'Administración', sistema_operativo: 'N/A', procesador: 'N/A', hd: 'N/A', ram: 'N/A', numero_serie: 'X5L1A001', vigencia: enDias(45), modelo: 'EB-X51', marca: 'Epson', adaptador_cargador: 'Cable de poder', asignado: 1 }));
   db.impresoras.push({ id: id('impresoras'), nombre: 'HP Almacén', marca: 'HP', modelo: 'LaserJet M404', serie: 'PHB123456', ubicacion: 'Almacén', ip: '192.168.1.50', foto: null, activo: 1, ...base(1, admin(1)) });
   db.archivos.push({ id: id('archivos'), nombre: 'Auditoría 2026', tipo: 'CARPETA', extension: null, 'tamaño': null, ruta_fisica: null, carpeta_padre_id: null, activo: 1, ...base(1, admin(1)) });
 
   // ---- Atlanta
   agregar('celulares', 2, { numero_telefono: '(404) 555-0123', usuario_asignado: 'John Smith', departamento: 'Maintenance', marca: 'Apple', modelo: 'iPhone 14', numero_serie: 'G6TZ91', imei: '351234567890125', responsiva: null, fecha_asignacion: enDias(-10), numero_ticket: null, asignado: 1 });
-  agregar('computo_administrativo', 2, { tipo_equipo: 'LAPTOP', hostname: 'ATL-ENG-L01', usuario_asignado: 'Robert Brown', departamento: 'Engineering', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i7-1365U', hd: '1 TB SSD', ram: '32 GB', vigencia: enDias(900), adaptador_cargador: 'Lenovo 65W USB-C', numero_ticket: 'ATL-200', asignado: 1 });
-  agregar('monitores', 2, { hostname: 'ATL-ENG-01', usuario_asignado: 'Mary Johnson', fecha_asignacion: enDias(-30), departamento: 'Engineering', ubicacion: 'Office 2', marca: 'LG', modelo: '27UK850', numero_serie: 'LG-778899', vigencia: null, numero_ticket: null, asignado: 1 });
+  agregar('computo_administrativo', 2, eq({ tipo_equipo: 'LAPTOP', hostname: 'ATL-ENG-L01', usuario_asignado: 'Robert Brown', departamento: 'Engineering', sistema_operativo: 'Windows 11 Pro', procesador: 'Intel Core i7-1365U', hd: '1 TB SSD', ram: '32 GB', numero_serie: 'PF4ATL01', vigencia: enDias(900), modelo: 'ThinkPad T14', marca: 'Lenovo', adaptador_cargador: 'Lenovo 65W USB-C', numero_ticket: 'ATL-200', asignado: 1 }));
+  agregar('monitores', 2, eq({ hostname: 'ATL-ENG-L01', usuario_asignado: 'Mary Johnson', departamento: 'Engineering', sistema_operativo: 'N/A', procesador: 'N/A', hd: 'N/A', ram: 'N/A', numero_serie: 'LG-778899', vigencia: enDias(25), modelo: '27UK850', marca: 'LG', adaptador_cargador: 'LG 19V', asignado: 1 }));
   db.impresoras.push({ id: id('impresoras'), nombre: 'Kyocera Atlanta', marca: 'Kyocera', modelo: 'ECOSYS M3655', serie: 'VCF9876543', ubicacion: 'Front office', ip: '10.10.1.51', foto: null, activo: 1, ...base(2, admin(2)) });
   db.archivos.push({ id: id('archivos'), nombre: 'Audit 2026', tipo: 'CARPETA', extension: null, 'tamaño': null, ruta_fisica: null, carpeta_padre_id: null, activo: 1, ...base(2, admin(2)) });
 
@@ -111,17 +112,24 @@ export function crearMock() {
 
   const siguienteId = (tabla) => (db.seq[tabla] = (db.seq[tabla] || 0) + 1);
   const region = (id) => REGIONES.find((r) => r.id === id);
+  // Igual que el servidor: admin entra a todas las plantas; Usuario a la suya + las asignadas
+  const plantasDe = (u) =>
+    u.perfil === 'Administrador' ? REGIONES : REGIONES.filter((r) => r.id === u.region_id || (u.plantas_extra || []).includes(r.id));
   const sesion = () => {
-    const id = leerLS(CLAVE_SESION);
-    return db.usuarios.find((x) => x.id === id && x.estado === 1) || null;
+    const s = leerLS(CLAVE_SESION);
+    const u = s && db.usuarios.find((x) => x.id === s.id && x.estado === 1);
+    if (!u || !plantasDe(u).some((r) => r.id === s.region)) return null;
+    return u; // el objeto real (los cambios de perfil se guardan)
   };
-  const publico = (u) => ({
+  const plantaSesion = () => leerLS(CLAVE_SESION)?.region;
+  const publico = (u, rid) => ({
     id: u.id,
     nombre: u.nombre,
     usuario: u.usuario,
     perfil: u.perfil,
     foto: u.foto,
-    region: region(u.region_id),
+    region: region(rid),
+    plantas: plantasDe(u),
   });
 
   function guardarArchivo(file, carpeta) {
@@ -156,14 +164,28 @@ export function crearMock() {
         const reg = region(Number(d.region_id));
         if (!usuario || !d.password) throw error('Escribe tu usuario y tu contraseña');
         if (!reg) throw error('Selecciona la planta');
-        const user = db.usuarios.find((x) => x.usuario === usuario && x.region_id === reg.id);
-        if (!user) throw error(`El usuario no existe en ${reg.nombre}`, 401);
-        if (user.password !== d.password) throw error('Error en la contraseña, vuelve a intentarlo', 401);
+        const candidatos = db.usuarios
+          .filter((x) => x.usuario === usuario)
+          .sort((x, y) => (x.region_id === reg.id ? -1 : 0) - (y.region_id === reg.id ? -1 : 0));
+        if (!candidatos.length) throw error('El usuario no existe', 401);
+        const user = candidatos.find((x) => x.password === d.password);
+        if (!user) throw error('Error en la contraseña, vuelve a intentarlo', 401);
         if (user.estado !== 1) throw error('El usuario aún no está activado', 403);
+        if (!plantasDe(user).some((r) => r.id === reg.id)) {
+          throw error(`Tu usuario no tiene acceso a ${reg.nombre}. Pide al administrador que te la asigne.`, 403);
+        }
         user.ultimo_login = ahora();
         guardar();
-        escribirLS(CLAVE_SESION, user.id);
-        return { status: 'success', user: publico(user) };
+        escribirLS(CLAVE_SESION, { id: user.id, region: reg.id });
+        return { status: 'success', user: publico(user, reg.id) };
+      }
+      if (a === 'cambiar-planta' && method === 'POST') {
+        const s = sesion();
+        if (!s) throw error('Sesión no iniciada', 401);
+        const reg = plantasDe(s).find((r) => r.id === Number(d.region_id));
+        if (!reg) throw error('No tienes acceso a esa planta', 403);
+        escribirLS(CLAVE_SESION, { id: s.id, region: reg.id });
+        return { status: 'success', user: publico(s, reg.id) };
       }
       if (a === 'logout') {
         escribirLS(CLAVE_SESION, null);
@@ -171,7 +193,7 @@ export function crearMock() {
       }
       if (a === 'me') {
         const s = sesion();
-        return { status: 'success', user: s ? publico(s) : null };
+        return { status: 'success', user: s ? publico(s, plantaSesion()) : null };
       }
     }
 
@@ -186,11 +208,12 @@ export function crearMock() {
       throw error('Tu perfil solo permite consultar la información', 403);
     }
 
-    const ctx = { yo, rid: yo.region_id, uid: yo.id, t: ahora(), q, d, body, id, a, b, method };
+    const ctx = { yo, rid: plantaSesion(), uid: yo.id, t: ahora(), q, d, body, id, a, b, method };
     let r;
     if (MODULOS[recurso]) r = rutaEquipo(recurso, ctx);
     else if (recurso === 'perfil') r = rutaPerfil(ctx);
     else if (recurso === 'usuarios') r = rutaUsuarios(ctx);
+    else if (recurso === 'resumen') r = rutaResumen(ctx);
     else if (recurso === 'impresoras') r = rutaImpresoras(ctx);
     else if (recurso === 'archivos') r = rutaArchivos(ctx);
     else throw error('Ruta no disponible en modo sin servidor', 404);
@@ -198,13 +221,56 @@ export function crearMock() {
     return r;
   }
 
+  // ---------------------------------------------------------------- inicio (resumen)
+  function rutaResumen({ rid }) {
+    const hoy = enDias(0);
+    const modulos = {};
+    for (const clave of Object.keys(MODULOS)) {
+      const rows = delRegion(clave, rid);
+      modulos[clave] = { total: rows.length, asignados: rows.filter((r) => r.asignado === 1).length };
+      if (clave === 'computo_administrativo') {
+        for (const t of ['PC', 'LAPTOP']) modulos[clave][t] = { total: rows.filter((r) => r.tipo_equipo === t).length };
+      }
+    }
+    const imp = delRegion('impresoras', rid);
+    modulos.impresoras = { total: imp.length, activas: imp.filter((r) => r.activo === 1).length };
+    const hasta = enDias(365);
+    const vigencias = ['computo_administrativo', 'computo_industrial', 'monitores', 'proyectores']
+      .flatMap((m) =>
+        delRegion(m, rid)
+          .filter((r) => r.vigencia && r.vigencia <= hasta)
+          .map((r) => ({ modulo: m, tipo_equipo: r.tipo_equipo || null, id: r.id, equipo: `${r.marca} ${r.modelo}`, numero_serie: r.numero_serie, usuario: r.usuario_asignado, vigencia: r.vigencia }))
+      )
+      .sort((x, y) => x.vigencia.localeCompare(y.vigencia));
+    const fechas = {};
+    for (const v of vigencias) if (v.vigencia >= enDias(-31)) fechas[v.vigencia] = (fechas[v.vigencia] || 0) + 1;
+    const nombres = Object.fromEntries(db.usuarios.map((u) => [u.id, u.nombre]));
+    const actividad = db.inventario_logs
+      .filter((l) => l.region_id === rid)
+      .sort((x, y) => y.id - x.id)
+      .slice(0, 8)
+      .map((l) => ({ ...l, usuario: nombres[l.usuario_id] }));
+    return {
+      status: 'success',
+      data: {
+        hoy,
+        modulos,
+        vencidas: vigencias.filter((v) => v.vigencia < hoy).length,
+        por_vencer: vigencias.filter((v) => v.vigencia >= hoy && v.vigencia <= enDias(30)).length,
+        proximas: vigencias.filter((v) => v.vigencia <= enDias(60)).slice(0, 12),
+        fechas,
+        actividad,
+      },
+    };
+  }
+
   // ---------------------------------------------------------------- perfil
-  function rutaPerfil({ yo, method, a, d }) {
-    if (method === 'GET') return { status: 'success', data: { ...publico(yo), estado: yo.estado, ultimo_login: yo.ultimo_login } };
+  function rutaPerfil({ yo, rid, method, a, d }) {
+    if (method === 'GET') return { status: 'success', data: { ...publico(yo, rid), estado: yo.estado, ultimo_login: yo.ultimo_login } };
     if (a === 'foto') {
       if (!(d.foto instanceof File) || !d.foto.size) throw error('Selecciona una imagen');
       yo.foto = guardarArchivo(d.foto, `vistas/img/usuarios/${yo.usuario}`);
-      return ok('Foto actualizada correctamente', { user: publico(yo) });
+      return ok('Foto actualizada correctamente', { user: publico(yo, rid) });
     }
     if (a === 'password') {
       if (!d.nuevaPassword) throw error('Escribe la nueva contraseña');
@@ -217,19 +283,27 @@ export function crearMock() {
 
   // ---------------------------------------------------------------- usuarios
   function rutaUsuarios({ yo, rid, method, a, b, id, q, d }) {
-    const deLaPlanta = db.usuarios.filter((u) => u.region_id === rid);
+    const deLaPlanta = db.usuarios.filter((u) => u.region_id === rid || (u.plantas_extra || []).includes(rid));
+    const leerPlantas = (v) => {
+      try {
+        return (JSON.parse(v ?? '[]') || []).map(Number).filter((x) => REGIONES.some((r) => r.id === x));
+      } catch {
+        return [];
+      }
+    };
     if (method === 'GET' && !a) {
       return porId(deLaPlanta).map((u, i) => ({
         contador: i + 1, id: u.id, nombre: u.nombre, usuario: u.usuario, foto: u.foto, perfil: u.perfil, estado: u.estado,
-        ultimo_login: u.ultimo_login || 'Nunca',
+        ultimo_login: u.ultimo_login || 'Nunca', region_id: u.region_id, planta_origen: region(u.region_id).nombre,
+        plantas: u.perfil === 'Administrador' ? 'todas' : [u.region_id, ...(u.plantas_extra || [])],
       }));
     }
-    if (method === 'GET' && a === 'existe') return { existe: deLaPlanta.some((u) => u.usuario === String(q.usuario || '').trim()) };
+    if (method === 'GET' && a === 'existe') return { existe: db.usuarios.some((u) => u.usuario === String(q.usuario || '').trim()) };
     if (method === 'POST' && !a) {
       const usuario = String(d.usuario ?? '').trim();
       if (!d.nombre || !usuario || !d.password || !d.perfil) throw error('Faltan campos obligatorios');
-      if (deLaPlanta.some((x) => x.usuario === usuario)) throw error('El usuario ya existe en esta planta');
-      const nuevo = { id: siguienteId('usuarios'), region_id: rid, nombre: String(d.nombre).trim(), usuario, password: d.password, perfil: d.perfil, foto: null, estado: 1, ultimo_login: null };
+      if (db.usuarios.some((x) => x.usuario === usuario)) throw error('Ese nombre de usuario ya existe');
+      const nuevo = { id: siguienteId('usuarios'), region_id: rid, nombre: String(d.nombre).trim(), usuario, password: d.password, perfil: d.perfil, foto: null, estado: 1, ultimo_login: null, plantas_extra: leerPlantas(d.plantas).filter((x) => x !== rid) };
       if (d.foto instanceof File && d.foto.size) nuevo.foto = guardarArchivo(d.foto, `vistas/img/usuarios/${usuario}`);
       db.usuarios.push(nuevo);
       return ok('Usuario creado correctamente');
@@ -238,13 +312,14 @@ export function crearMock() {
     if (!u) throw error('Usuario no encontrado', 404);
     if (method === 'GET') {
       const { password, ...resto } = u;
-      return { status: 'success', data: resto };
+      return { status: 'success', data: { ...resto, plantas: [u.region_id, ...(u.plantas_extra || [])] } };
     }
     if (method === 'PUT') {
       if (!d.nombre || !d.perfil) throw error('Faltan campos obligatorios');
       if (u.id === yo.id && d.perfil !== 'Administrador') throw error('No puedes quitarte a ti mismo el perfil de Administrador');
       Object.assign(u, { nombre: String(d.nombre).trim(), perfil: d.perfil });
       if (d.password) u.password = d.password;
+      if (d.plantas !== undefined) u.plantas_extra = leerPlantas(d.plantas).filter((x) => x !== u.region_id);
       if (d.foto instanceof File && d.foto.size) u.foto = guardarArchivo(d.foto, `vistas/img/usuarios/${u.usuario}`);
       return ok('Usuario actualizado correctamente');
     }
@@ -272,7 +347,7 @@ export function crearMock() {
       db.inventario_logs.push({ id: siguienteId('inventario_logs'), region_id: rid, modulo: clave, registro_id, accion, detalles, usuario_id: uid, created_at: ahora() });
     const decorar = (r) =>
       cfg.archivo
-        ? { ...r, has_archivo: !!r.responsiva, archivo_tipo: r.responsiva ? (EXT_IMAGEN.includes(ext(r.responsiva)) ? 'image' : 'document') : null }
+        ? { ...r, has_archivo: !!r.responsiva, archivo_tipo: r.responsiva ? (EXT_IMAGEN.includes(ext(r.responsiva)) ? 'image' : ext(r.responsiva) === 'pdf' ? 'pdf' : 'document') : null }
         : r;
     const etiqueta = (n) => (campos[n] ? campos[n].etiqueta.replace(' (opcional)', '') : 'Tipo de equipo');
     const sub = cfg.subtipos;

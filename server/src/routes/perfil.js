@@ -6,6 +6,7 @@ import { subida } from '../lib/files.js';
 import { FOTO_DEFAULT } from '../config.js';
 import { borrarFotoUsuario, guardarFotoUsuario, validarFoto } from './usuarios.js';
 import { usuarioPublico } from './auth.js';
+import { plantasDeUsuario } from '../auth.js';
 
 const router = Router();
 const upload = subida({ maxMB: 2 });
@@ -40,7 +41,7 @@ router.post(
     await execute('UPDATE usuarios SET foto = ? WHERE id = ?', [nueva, req.user.id]);
     await borrarFotoUsuario(u.foto);
 
-    ok(res, 'Foto actualizada correctamente', { user: usuarioPublico({ ...req.user, foto: nueva }) });
+    ok(res, 'Foto actualizada correctamente', { user: usuarioPublico({ ...req.user, foto: nueva }, await plantasDeUsuario({ ...req.user, region_id: req.user.region_planta })) });
   })
 );
 

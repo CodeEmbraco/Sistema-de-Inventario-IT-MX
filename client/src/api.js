@@ -98,6 +98,16 @@ export function urlArchivo(rel) {
   return '/' + String(rel).replace(/^\/+/, '');
 }
 
+/**
+ * URL de la responsiva de un registro: se pide al servidor por el registro (respeta la planta y
+ * entrega el tipo de archivo correcto). descargar=true fuerza la descarga con un nombre legible.
+ */
+export function urlResponsiva(clave, reg, descargar = false) {
+  if (!reg?.responsiva) return '';
+  if (mock) return mock.urlDe(reg.responsiva);
+  return `/api/${clave}/${reg.id}/archivo${descargar ? '?descargar=1' : ''}`;
+}
+
 export const FOTO_DEFAULT = '/assets/img/anonymous.png';
 
 /** URL para ver (inline) o descargar un archivo del explorador de auditoría. */

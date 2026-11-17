@@ -16,32 +16,35 @@
 const texto = (max, extra = {}) => ({ tipo: 'texto', max, ...extra });
 const fecha = (extra = {}) => ({ tipo: 'fecha', ...extra });
 
-const camposComputo = {
-  hostname: texto(100, { sugerir: false }),
-  usuario_asignado: texto(200, { siAsignado: true, sugerir: true }),
+/**
+ * Mismos campos para Cómputo administrativo (PC y Laptop), Cómputo industrial,
+ * Monitores y Proyectores. Solo hostname y número de ticket son opcionales.
+ */
+const camposEquipo = {
+  hostname: texto(100),
+  usuario_asignado: texto(200, { requerido: true, sugerir: true }),
   departamento: texto(150, { requerido: true, sugerir: true }),
   sistema_operativo: texto(100, { requerido: true, sugerir: true }),
   procesador: texto(150, { requerido: true, sugerir: true }),
   hd: texto(50, { requerido: true, sugerir: true }),
   ram: texto(50, { requerido: true, sugerir: true }),
   numero_serie: texto(100, { requerido: true, unico: true }),
-  vigencia: fecha(),
-  adaptador_cargador: texto(150, { sugerir: true }),
+  vigencia: fecha({ requerido: true }),
+  modelo: texto(100, { requerido: true, sugerir: true }),
+  marca: texto(100, { requerido: true, sugerir: true }),
+  adaptador_cargador: texto(150, { requerido: true, sugerir: true }),
   numero_ticket: texto(50),
 };
 
-const camposPerifericos = {
-  hostname: texto(100),
-  usuario_asignado: texto(200, { siAsignado: true, sugerir: true }),
-  fecha_asignacion: fecha({ siAsignado: true }),
-  departamento: texto(150, { sugerir: true }),
-  ubicacion: texto(200, { sugerir: true }),
-  marca: texto(100, { requerido: true, sugerir: true }),
-  modelo: texto(100, { requerido: true, sugerir: true }),
-  numero_serie: texto(100, { requerido: true, unico: true }),
-  vigencia: fecha(),
-  numero_ticket: texto(50),
-};
+/** Responsiva (opcional) con vista previa y descarga. */
+const responsiva = (carpeta) => ({
+  columna: 'responsiva',
+  carpeta, // se guarda en uploads/<PLANTA>/<carpeta>
+  extensiones: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'doc', 'docx', 'xls', 'xlsx'],
+  maxMB: 10,
+});
+
+const tituloEquipo = (d) => `${d.marca} ${d.modelo} (Serie: ${d.numero_serie})`;
 
 export const MODULOS = {
   celulares: {
@@ -71,28 +74,32 @@ export const MODULOS = {
   computo_administrativo: {
     tabla: 'computo_administrativo',
     singular: 'Equipo de cómputo administrativo',
-    campos: camposComputo,
+    campos: camposEquipo,
+    archivo: responsiva('responsivas_computo_administrativo'),
     // Submódulos PC y Laptop (mismos campos)
     subtipos: { columna: 'tipo_equipo', valores: { PC: 'PC', LAPTOP: 'Laptop' } },
-    titulo: (d) => `${d.tipo_equipo === 'LAPTOP' ? 'Laptop' : 'PC'} ${d.hostname || ''} - ${d.departamento}`.replace(/\s+/g, ' '),
+    titulo: (d) => `${d.tipo_equipo === 'LAPTOP' ? 'Laptop' : 'PC'} ${tituloEquipo(d)}`,
   },
   computo_industrial: {
     tabla: 'computo_industrial',
     singular: 'Equipo de cómputo industrial',
-    campos: camposComputo,
-    titulo: (d) => `${d.hostname || d.departamento} - ${d.procesador}`,
+    campos: camposEquipo,
+    archivo: responsiva('responsivas_computo_industrial'),
+    titulo: tituloEquipo,
   },
   monitores: {
     tabla: 'monitores',
     singular: 'Monitor',
-    campos: camposPerifericos,
-    titulo: (d) => `${d.marca} ${d.modelo} (Serie: ${d.numero_serie})`,
+    campos: camposEquipo,
+    archivo: responsiva('responsivas_monitores'),
+    titulo: tituloEquipo,
   },
   proyectores: {
     tabla: 'proyectores',
     singular: 'Proyector',
-    campos: camposPerifericos,
-    titulo: (d) => `${d.marca} ${d.modelo} (Serie: ${d.numero_serie})`,
+    campos: camposEquipo,
+    archivo: responsiva('responsivas_proyectores'),
+    titulo: tituloEquipo,
   },
 };
 
@@ -115,6 +122,7 @@ export const ETIQUETAS = {
   adaptador_cargador: 'Adaptador cargador',
   hostname: 'Hostname',
   ubicacion: 'Ubicación',
+  responsiva: 'Responsiva',
   asignado: 'Asignado',
   tipo_equipo: 'Tipo de equipo',
 };

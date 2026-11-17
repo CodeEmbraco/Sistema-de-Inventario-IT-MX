@@ -1,11 +1,33 @@
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
-import { queryOne } from './db.js';
+import { query, queryOne } from './db.js';
 
 export const COOKIE_NAME = 'inventario_ti_sesion';
 
-export function crearToken(usuario) {
-  return jwt.sign({ id: usuario.id }, config.jwtSecret, { expiresIn: `${config.sessionHours}h` });
+/** El token guarda el usuario y la planta en la que está trabajando. */
+export function crearToken(usuario, regionId) {
+  return jwt.sign({ id: usuario.id, region: regionId ?? usuario.region_id }, config.jwtSecret, {
+    expiresIn: `${config.sessionHours}h`,
+  });
+}
+
+/**
+ * Plantas a las que puede entrar un usuario:
+ *  - Administrador: todas
+ *  - Usuario: su planta + las que el administrador le asignó (tabla usuario_regiones)
+ */
+export async function plantasDeUsuario(u) {
+  if (u.perfil === 'Administrador') return query('SELECT id, clave, nombre FROM regiones ORDER BY id');
+  return query(
+    `SELECT r.id, r.clave, r.nombre FROM regiones r
+     WHERE r.id = ? OR r.id IN (SELECT region_id FROM usuario_regiones WHERE usuario_id = ?)
+     ORDER BY r.id`,
+    [u.region_id, u.id]
+  );
+}
+
+export async function puedeEntrar(u, regionId) {
+  return (await plantasDeUsuario(u)).find((r) => r.id === Number(regionId)) || null;
 }
 
 export function opcionesCookie() {
@@ -29,17 +51,19 @@ export async function requireAuth(req, res, next) {
 
     const payload = jwt.verify(token, config.jwtSecret);
     const usuario = await queryOne(
-      `SELECT u.id, u.region_id, u.nombre, u.usuario, u.perfil, u.foto, u.estado, r.clave AS region_clave, r.nombre AS region_nombre
-       FROM usuarios u JOIN regiones r ON r.id = u.region_id WHERE u.id = ?`,
+      'SELECT id, region_id, nombre, usuario, perfil, foto, estado FROM usuarios WHERE id = ?',
       [payload.id]
     );
-    if (!usuario || Number(usuario.estado) !== 1) {
+    // Planta de la sesión (la elegida al entrar o al cambiar de planta); se vuelve a validar
+    // el acceso en cada petición por si el administrador se lo quitó.
+    const planta = usuario && Number(usuario.estado) === 1 ? await puedeEntrar(usuario, payload.region ?? usuario.region_id) : null;
+    if (!planta) {
       res.clearCookie(COOKIE_NAME, { path: '/' });
       return res.status(401).json({ status: 'error', message: 'Sesión no válida' });
     }
-    req.user = usuario;
+    req.user = { ...usuario, region_planta: usuario.region_id, region_id: planta.id, region_clave: planta.clave, region_nombre: planta.nombre };
     // Planta de la sesión: TODAS las consultas de inventario se filtran por este valor
-    req.region = usuario.region_id;
+    req.region = planta.id;
     next();
   } catch {
     res.clearCookie(COOKIE_NAME, { path: '/' });

@@ -40,8 +40,52 @@ export async function borrarFotoUsuario(foto) {
   if (foto && foto !== FOTO_DEFAULT && !foto.includes('/default/')) await borrarArchivo(foto);
 }
 
+/**
+ * Usuarios visibles en una planta: los de la planta y los de otras plantas a los que se les
+ * dio acceso a esta. Los administradores entran a todas las plantas sin estar en la lista.
+ */
+const VISIBLE = `(region_id = ? OR id IN (SELECT usuario_id FROM usuario_regiones WHERE region_id = ?))`;
+
+async function buscarVisible(id, region) {
+  return queryOne(`SELECT * FROM usuarios WHERE id = ? AND ${VISIBLE}`, [id, region, region]);
+}
+
+/** Lee las plantas marcadas en el formulario (JSON "[1,2]" o "1,2"). */
+async function leerPlantas(valor) {
+  let ids = [];
+  try {
+    ids = Array.isArray(valor) ? valor : JSON.parse(valor ?? '[]');
+  } catch {
+    ids = String(valor ?? '').split(',');
+  }
+  ids = [...new Set(ids.map((x) => Number.parseInt(x, 10)).filter(Number.isInteger))];
+  const validas = new Set((await query('SELECT id FROM regiones')).map((r) => r.id));
+  return ids.filter((x) => validas.has(x));
+}
+
+async function guardarPlantas(usuarioId, plantaOrigen, ids) {
+  await execute('DELETE FROM usuario_regiones WHERE usuario_id = ?', [usuarioId]);
+  for (const r of ids) {
+    if (r !== plantaOrigen) await execute('INSERT INTO usuario_regiones (usuario_id, region_id) VALUES (?, ?)', [usuarioId, r]);
+  }
+}
+
+async function plantasDe(usuarioIds) {
+  if (!usuarioIds.length) return new Map();
+  const rows = await query(
+    `SELECT usuario_id, region_id FROM usuario_regiones WHERE usuario_id IN (${usuarioIds.map(() => '?').join(',')})`,
+    usuarioIds
+  );
+  const m = new Map();
+  for (const r of rows) m.set(r.usuario_id, [...(m.get(r.usuario_id) || []), r.region_id]);
+  return m;
+}
+
 function formatoLista(u, i) {
   return {
+    region_id: u.region_id,
+    planta_origen: u.planta_nombre,
+    plantas: u.plantas,
     contador: i + 1,
     id: u.id,
     nombre: u.nombre,
@@ -56,7 +100,16 @@ function formatoLista(u, i) {
 router.get(
   '/',
   ah(async (req, res) => {
-    const rows = await query('SELECT * FROM usuarios WHERE region_id = ? ORDER BY id DESC', [req.region]);
+    const rows = await query(
+      `SELECT u.*, r.nombre AS planta_nombre FROM usuarios u JOIN regiones r ON r.id = u.region_id
+       WHERE u.region_id = ? OR u.id IN (SELECT usuario_id FROM usuario_regiones WHERE region_id = ?)
+       ORDER BY u.id DESC`,
+      [req.region, req.region]
+    );
+    const extra = await plantasDe(rows.map((r) => r.id));
+    for (const r of rows) {
+      r.plantas = r.perfil === 'Administrador' ? 'todas' : [r.region_id, ...(extra.get(r.id) || [])];
+    }
     res.json(rows.map(formatoLista));
   })
 );
@@ -66,7 +119,7 @@ router.get(
   ah(async (req, res) => {
     const usuario = String(req.query.usuario || '').trim();
     const row = usuario
-      ? await queryOne('SELECT id FROM usuarios WHERE usuario = ? AND region_id = ?', [usuario, req.region])
+      ? await queryOne('SELECT id FROM usuarios WHERE usuario = ?', [usuario])
       : null;
     res.json({ existe: Boolean(row) });
   })
@@ -75,11 +128,12 @@ router.get(
 router.get(
   '/:id',
   ah(async (req, res) => {
-    const u = await queryOne('SELECT * FROM usuarios WHERE id = ? AND region_id = ?', [idParam(req), req.region]);
+    const u = await buscarVisible(idParam(req), req.region);
     if (!u) throw notFound('Usuario no encontrado');
     // A diferencia del PHP, nunca devolvemos el hash de la contraseña al navegador
     const { password, ...resto } = u;
-    res.json({ status: 'success', data: { ...resto, foto: u.foto || FOTO_DEFAULT } });
+    const extra = (await plantasDe([u.id])).get(u.id) || [];
+    res.json({ status: 'success', data: { ...resto, plantas: [u.region_id, ...extra], foto: u.foto || FOTO_DEFAULT } });
   })
 );
 
@@ -98,14 +152,16 @@ router.post(
     if (!PERFILES.includes(perfil)) throw badRequest('Perfil no válido');
     validarFoto(req.file);
 
-    if (await queryOne('SELECT id FROM usuarios WHERE usuario = ? AND region_id = ?', [usuario, req.region])) {
-      throw badRequest('El usuario ya existe en esta planta');
+    // El nombre de usuario no se repite en ninguna planta (así puede cambiar de planta sin confusión)
+    if (await queryOne('SELECT id FROM usuarios WHERE usuario = ?', [usuario])) {
+      throw badRequest('Ese nombre de usuario ya existe');
     }
+    const plantas = await leerPlantas(req.body.plantas);
 
     const hash = await bcrypt.hash(password, 12);
     const foto = req.file ? await guardarFotoUsuario(req.file, usuario) : FOTO_DEFAULT;
 
-    await insert('usuarios', {
+    const nuevoId = await insert('usuarios', {
       region_id: req.region,
       nombre,
       usuario,
@@ -115,6 +171,7 @@ router.post(
       estado: 1,
       ultimo_login: null, // nunca ha iniciado sesión
     });
+    await guardarPlantas(nuevoId, req.region, plantas);
     ok(res, 'Usuario creado correctamente');
   })
 );
@@ -132,7 +189,7 @@ router.put(
     if (!PERFILES.includes(perfil)) throw badRequest('Perfil no válido');
     validarFoto(req.file);
 
-    const actual = await queryOne('SELECT * FROM usuarios WHERE id = ? AND region_id = ?', [id, req.region]);
+    const actual = await buscarVisible(id, req.region);
     if (!actual) throw notFound('Usuario no encontrado');
 
     if (id === req.user.id && perfil !== 'Administrador') {
@@ -154,6 +211,7 @@ router.put(
       foto,
       id,
     ]);
+    if (req.body.plantas !== undefined) await guardarPlantas(id, actual.region_id, await leerPlantas(req.body.plantas));
     ok(res, 'Usuario actualizado correctamente');
   })
 );
@@ -164,8 +222,8 @@ router.patch(
     const id = idParam(req);
     const estado = Number(req.body?.estado) === 1 ? 1 : 0;
     if (id === req.user.id && estado === 0) throw badRequest('No puedes desactivar tu propio usuario');
-    const r = await execute('UPDATE usuarios SET estado = ? WHERE id = ? AND region_id = ?', [estado, id, req.region]);
-    if (!r.affectedRows) throw notFound('Usuario no encontrado');
+    if (!(await buscarVisible(id, req.region))) throw notFound('Usuario no encontrado');
+    await execute('UPDATE usuarios SET estado = ? WHERE id = ?', [estado, id]);
     ok(res, 'Estado del usuario actualizado');
   })
 );

@@ -30,7 +30,7 @@ export default function Adjunto({ titulo, actual, onVer, onEliminar, accept, max
         {actual && (
           <div className="alert alert-info d-flex flex-wrap align-items-center gap-2">
             <span className="text-break">
-              <strong>Archivo actual:</strong> {actual.ruta.split('/').pop()}
+              <strong>Archivo actual:</strong> {String(actual.ruta || actual.responsiva || '').split('/').pop()}
             </span>
             <span className="ms-auto d-flex gap-2">
               <button type="button" className="btn btn-sm btn-info" onClick={onVer}>

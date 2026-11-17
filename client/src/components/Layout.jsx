@@ -1,230 +1,286 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { FOTO_DEFAULT, urlArchivo } from '../api.js';
 import { MODULOS, RUTA_INICIO } from '../modulos.js';
-import CambiarRegion from './CambiarRegion.jsx';
+import Icono from './Icono.jsx';
 
+/**
+ * Menú superior (estilo portal Nidec):
+ *  logo · módulos en "píldoras" · planta · modo oscuro · usuario.
+ * Cómputo agrupa Administrativo PC / Laptop e Industrial.
+ */
+const adm = MODULOS.computo_administrativo;
 const MENU = [
-  { to: '/usuarios', icon: 'fas fa-users', label: 'Usuarios', soloAdmin: true },
-  ...Object.values(MODULOS).map((m) => ({
-    to: m.ruta,
-    icon: m.icono,
-    label: m.menu,
-    hijos: m.subtipos?.opciones.map((o) => ({ to: `${m.ruta}/${o.ruta}`, icon: o.icono, label: o.menu })),
-  })),
-  { to: '/archivos', icon: 'fas fa-folder-open', label: 'Archivos de auditoría' },
-  { to: '/impresoras', icon: 'fas fa-print', label: 'Impresoras' },
+  { to: RUTA_INICIO, icono: 'inicio', label: 'Inicio' },
+  { to: MODULOS.celulares.ruta, icono: 'celular', label: 'Celulares' },
+  {
+    id: 'computo',
+    icono: 'laptop',
+    label: 'Cómputo',
+    activoSi: ['/computo-'],
+    hijos: [
+      ...adm.subtipos.opciones.map((o) => ({ to: `${adm.ruta}/${o.ruta}`, icono: o.icono, label: `Administrativo · ${o.menu}` })),
+      { to: MODULOS.computo_industrial.ruta, icono: 'industria', label: 'Industrial' },
+    ],
+  },
+  { to: MODULOS.monitores.ruta, icono: 'monitor', label: 'Monitores' },
+  { to: MODULOS.proyectores.ruta, icono: 'proyector', label: 'Proyectores' },
+  { to: '/impresoras', icono: 'impresora', label: 'Impresoras' },
+  { to: '/archivos', icono: 'carpeta', label: 'Archivos' },
 ];
 
-function Avatar({ foto, className }) {
+export function Avatar({ user, size = 34 }) {
+  const [error, setError] = useState(false);
+  const iniciales = String(user?.nombre || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+  const foto = user?.foto && !user.foto.includes('/default/') ? urlArchivo(user.foto) : null;
+  if (foto && !error) {
+    return <img src={foto} alt="" className="avatar" style={{ width: size, height: size }} onError={() => setError(true)} />;
+  }
   return (
-    <img
-      src={(foto && urlArchivo(foto)) || FOTO_DEFAULT}
-      alt="Foto de perfil"
-      className={className}
-      onError={(e) => {
-        if (!e.currentTarget.src.endsWith(FOTO_DEFAULT)) e.currentTarget.src = FOTO_DEFAULT;
-      }}
-    />
+    <span className="avatar avatar-iniciales" style={{ width: size, height: size }} aria-hidden="true">
+      {iniciales}
+    </span>
   );
 }
 
-function LogoHeader({ onToggleNav, onToggleMin, onToggleTopbar }) {
+/** Modo claro / oscuro (se recuerda en este navegador). */
+export function useTema() {
+  const [tema, setTema] = useState(() => {
+    try {
+      return localStorage.getItem('inventario.tema') || 'claro';
+    } catch {
+      return 'claro';
+    }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.tema = tema;
+    try {
+      localStorage.setItem('inventario.tema', tema);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [tema]);
+  return [tema, () => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro'))];
+}
+
+/** Cierra un menú desplegable al hacer clic fuera o presionar Escape. */
+function useCerrarFuera(abierto, cerrar) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const clic = (e) => ref.current && !ref.current.contains(e.target) && cerrar();
+    const tecla = (e) => e.key === 'Escape' && cerrar();
+    document.addEventListener('mousedown', clic);
+    document.addEventListener('keydown', tecla);
+    return () => {
+      document.removeEventListener('mousedown', clic);
+      document.removeEventListener('keydown', tecla);
+    };
+  }, [abierto, cerrar]);
+  return ref;
+}
+
+function MenuDesplegable({ item, ruta }) {
+  const [abierto, setAbierto] = useState(false);
+  const ref = useCerrarFuera(abierto, () => setAbierto(false));
+  const activo = item.activoSi.some((p) => ruta.startsWith(p));
+  useEffect(() => { setAbierto(false); }, [ruta]);
   return (
-    <div className="logo-header" data-background-color="green">
-      <Link to={RUTA_INICIO} className="logo">
-        <img src="/assets/img/kaiadmin/nidec.png" alt="Inventario IT" className="navbar-brand" height="40" />
-        <div className="logo-text">Inventario IT</div>
-      </Link>
-      <div className="nav-toggle">
-        <button type="button" className="btn btn-toggle toggle-sidebar" onClick={onToggleMin} aria-label="Contraer menú">
-          <i className="gg-menu-right" />
-        </button>
-        <button type="button" className="btn btn-toggle sidenav-toggler" onClick={onToggleNav} aria-label="Abrir menú">
-          <i className="gg-menu-left" />
-        </button>
-      </div>
-      <button type="button" className="topbar-toggler more" onClick={onToggleTopbar} aria-label="Más opciones">
-        <i className="gg-more-vertical-alt" />
+    <div className="nav-desplegable" ref={ref}>
+      <button
+        type="button"
+        className={`nav-pildora ${activo ? 'activa' : ''}`}
+        aria-expanded={abierto}
+        aria-haspopup="true"
+        onClick={() => setAbierto((v) => !v)}
+      >
+        <Icono nombre={item.icono} size={16} />
+        <span>{item.label}</span>
+        <Icono nombre="abajo" size={14} />
       </button>
+      {abierto && (
+        <div className="menu-flotante" role="menu">
+          {item.hijos.map((h) => (
+            <NavLink key={h.to} to={h.to} role="menuitem" className={({ isActive }) => `menu-opcion ${isActive ? 'activa' : ''}`}>
+              <Icono nombre={h.icono} size={17} />
+              {h.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SelectorPlanta() {
+  const { user, cambiarPlanta } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [abierto, setAbierto] = useState(false);
+  const ref = useCerrarFuera(abierto, () => setAbierto(false));
+  const plantas = user.plantas || [user.region];
+
+  const elegir = async (p) => {
+    setAbierto(false);
+    if (p.id === user.region?.id) return;
+    try {
+      await cambiarPlanta(p.id);
+      toast.exito(`Ahora estás en ${p.nombre}`);
+      navigate(RUTA_INICIO);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  return (
+    <div className="nav-desplegable" ref={ref}>
+      <button
+        type="button"
+        className="btn-planta"
+        aria-expanded={abierto}
+        aria-haspopup="true"
+        onClick={() => setAbierto((v) => !v)}
+        title={plantas.length > 1 ? 'Cambiar de planta' : 'Planta'}
+      >
+        <Icono nombre="planta" size={16} />
+        <span className="btn-planta-texto">{user.region?.nombre}</span>
+        {plantas.length > 1 && <Icono nombre="abajo" size={14} />}
+      </button>
+      {abierto && (
+        <div className="menu-flotante menu-derecha" role="menu">
+          <div className="menu-titulo">Cambiar de planta</div>
+          {plantas.map((p) => (
+            <button key={p.id} type="button" role="menuitem" className={`menu-opcion ${p.id === user.region?.id ? 'activa' : ''}`} onClick={() => elegir(p)}>
+              <Icono nombre={p.id === user.region?.id ? 'check' : 'planta'} size={17} />
+              <span>
+                {p.nombre}
+                <small>{p.clave}</small>
+              </span>
+            </button>
+          ))}
+          {plantas.length < 2 && <p className="menu-nota">Tu usuario solo tiene acceso a esta planta.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuUsuario() {
+  const { user, logout, esAdmin } = useAuth();
+  const [abierto, setAbierto] = useState(false);
+  const ref = useCerrarFuera(abierto, () => setAbierto(false));
+  const location = useLocation();
+  useEffect(() => { setAbierto(false); }, [location.pathname]);
+
+  return (
+    <div className="nav-desplegable" ref={ref}>
+      <button type="button" className="btn-usuario" aria-expanded={abierto} aria-haspopup="true" onClick={() => setAbierto((v) => !v)}>
+        <Avatar user={user} />
+        <span className="btn-usuario-texto">
+          <strong>{user.nombre}</strong>
+          <small>
+            {user.perfil}
+            {!esAdmin && ' · solo lectura'}
+          </small>
+        </span>
+      </button>
+      {abierto && (
+        <div className="menu-flotante menu-derecha" role="menu">
+          <Link to="/perfil" role="menuitem" className="menu-opcion">
+            <Icono nombre="usuario" size={17} /> Mi perfil
+          </Link>
+          {esAdmin && (
+            <Link to="/usuarios" role="menuitem" className="menu-opcion">
+              <Icono nombre="usuarios" size={17} /> Usuarios
+            </Link>
+          )}
+          <button type="button" role="menuitem" className="menu-opcion" onClick={logout}>
+            <Icono nombre="salir" size={17} /> Cerrar sesión
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function Layout() {
-  const { user, esAdmin, logout } = useAuth();
+  const { user, logout, esAdmin } = useAuth();
   const location = useLocation();
-  const [minimizado, setMinimizado] = useState(false);
-  const [menuUsuario, setMenuUsuario] = useState(false);
-  const [cambiarRegion, setCambiarRegion] = useState(false);
-  const [abiertos, setAbiertos] = useState({}); // submenús desplegados
-  const dropdownRef = useRef(null);
-
-  // KaiAdmin usa clases en <html> para el menú en móvil
-  const toggleHtml = (clase) => document.documentElement.classList.toggle(clase);
-
-  useEffect(() => {
-    document.documentElement.classList.remove('nav_open', 'topbar_open');
-    setMenuUsuario(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const fuera = (e) => dropdownRef.current && !dropdownRef.current.contains(e.target) && setMenuUsuario(false);
-    document.addEventListener('mousedown', fuera);
-    return () => document.removeEventListener('mousedown', fuera);
-  }, []);
-
-  const toggles = {
-    onToggleNav: () => toggleHtml('nav_open'),
-    onToggleMin: () => setMinimizado((m) => !m),
-    onToggleTopbar: () => toggleHtml('topbar_open'),
-  };
+  const [tema, alternarTema] = useTema();
+  const [menuMovil, setMenuMovil] = useState(false);
+  useEffect(() => { setMenuMovil(false); }, [location.pathname]);
+  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
 
   return (
-    <div className={`wrapper ${minimizado ? 'sidebar_minimize' : ''}`}>
-      {/* Menú lateral */}
-      <div className="sidebar" data-background-color="white">
-        <div className="sidebar-logo">
-          <LogoHeader {...toggles} />
-        </div>
-        <div className="sidebar-wrapper scrollbar scrollbar-inner">
-          <div className="sidebar-content">
-            <ul className="nav nav-secondary">
-              {MENU.filter((m) => !m.soloAdmin || esAdmin).map((m) => {
-                const activo = location.pathname.startsWith(m.to);
-                if (!m.hijos) {
-                  return (
-                    <li key={m.to} className={`nav-item ${activo ? 'active' : ''}`}>
-                      <NavLink to={m.to}>
-                        <i className={m.icon} />
-                        <p>{m.label}</p>
-                      </NavLink>
-                    </li>
-                  );
-                }
-                const abierto = activo || abiertos[m.to];
-                return (
-                  <li key={m.to} className={`nav-item ${activo ? 'active submenu' : ''}`}>
-                    <a
-                      href={m.to}
-                      className={abierto ? '' : 'collapsed'}
-                      aria-expanded={abierto}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setAbiertos((a) => ({ ...a, [m.to]: !abierto }));
-                      }}
-                    >
-                      <i className={m.icon} />
-                      <p>{m.label}</p>
-                      <span className="caret" />
-                    </a>
-                    <div className={`collapse ${abierto ? 'show' : ''}`}>
-                      <ul className="nav nav-collapse">
-                        {m.hijos.map((h) => (
-                          <li key={h.to} className={location.pathname.startsWith(h.to) ? 'active' : ''}>
-                            <NavLink to={h.to}>
-                              <span className="sub-item">{h.label}</span>
-                            </NavLink>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      </div>
+    <div className="app">
+      <header className="barra">
+        <div className="barra-interior">
+          <Link to={RUTA_INICIO} className="marca" aria-label="Inventario TI, inicio">
+            <img src="/assets/img/marca/nidec-blanco.png" alt="Nidec" className="marca-logo" />
+            <span className="marca-separador" aria-hidden="true" />
+            <span className="marca-nombre">Inventario TI</span>
+          </Link>
 
-      <div className="main-panel">
-        <div className="main-header">
-          <div className="main-header-logo">
-            <LogoHeader {...toggles} />
-          </div>
-          <nav className="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom" data-background-color="green">
-            <div className="container-fluid">
-              <ul className="navbar-nav topbar-nav ms-md-auto align-items-center">
-                <li className="nav-item me-2">
-                  <button
-                    type="button"
-                    className="btn-region"
-                    title="Cambiar de región"
-                    onClick={() => setCambiarRegion(true)}
-                  >
-                    <i className="fas fa-globe-americas me-2" />
-                    <span className="d-none d-sm-inline">{user?.region?.nombre}</span>
-                    <span className="d-sm-none">{user?.region?.clave}</span>
-                    <i className="fas fa-exchange-alt ms-2 opacity-75" />
-                  </button>
-                </li>
-                <li className="nav-item topbar-user dropdown hidden-caret" ref={dropdownRef}>
-                  <a
-                    className="dropdown-toggle profile-pic"
-                    href="#"
-                    role="button"
-                    aria-expanded={menuUsuario}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setMenuUsuario((v) => !v);
-                    }}
-                  >
-                    <div className="avatar-sm">
-                      <Avatar foto={user?.foto} className="avatar-img rounded-circle" />
-                    </div>
-                    <span className="profile-username">
-                      <span className="op-7">Hola,</span> <span className="fw-bold">{user?.nombre}</span>
-                    </span>
-                  </a>
-                  <ul className={`dropdown-menu dropdown-user animated fadeIn ${menuUsuario ? 'show' : ''}`}>
-                    <div className="dropdown-user-scroll">
-                      <li>
-                        <div className="user-box">
-                          <div className="avatar-lg">
-                            <Avatar foto={user?.foto} className="avatar-img rounded" />
-                          </div>
-                          <div className="u-text">
-                            <h4>{user?.usuario}</h4>
-                            <p className="text-muted mb-1">
-                              {user?.perfil} · {user?.region?.nombre}
-                            </p>
-                            <Link to="/perfil" className="btn btn-xs btn-secondary btn-sm">
-                              Ver perfil
-                            </Link>
-                          </div>
-                        </div>
-                      </li>
-                      <li>
-                        <div className="dropdown-divider" />
-                        <button
-                          type="button"
-                          className="dropdown-item"
-                          onClick={() => {
-                            setMenuUsuario(false);
-                            setCambiarRegion(true);
-                          }}
-                        >
-                          <i className="fas fa-globe-americas me-2" />
-                          Cambiar de región
-                        </button>
-                        <button type="button" className="dropdown-item" onClick={logout}>
-                          <i className="fas fa-sign-out-alt me-2" />
-                          Cerrar sesión
-                        </button>
-                      </li>
-                    </div>
-                  </ul>
-                </li>
-              </ul>
-            </div>
+          <button type="button" className="btn-icono btn-menu-movil" aria-label="Abrir menú" aria-expanded={menuMovil} onClick={() => setMenuMovil((v) => !v)}>
+            <Icono nombre={menuMovil ? 'cerrar' : 'menu'} size={20} />
+          </button>
+
+          <nav className={`nav-principal ${menuMovil ? 'abierto' : ''}`} aria-label="Módulos">
+            {MENU.map((m) =>
+              m.hijos ? (
+                <MenuDesplegable key={m.id} item={m} ruta={location.pathname} />
+              ) : (
+                <NavLink key={m.to} to={m.to} className={({ isActive }) => `nav-pildora ${isActive ? 'activa' : ''}`}>
+                  <Icono nombre={m.icono} size={16} />
+                  <span>{m.label}</span>
+                </NavLink>
+              )
+            )}
+            {esAdmin && (
+              <NavLink to="/usuarios" className={({ isActive }) => `nav-pildora solo-movil ${isActive ? 'activa' : ''}`}>
+                <Icono nombre="usuarios" size={16} />
+                <span>Usuarios</span>
+              </NavLink>
+            )}
           </nav>
+
+          <div className="barra-acciones">
+            <SelectorPlanta />
+            <button
+              type="button"
+              className="btn-icono"
+              onClick={alternarTema}
+              aria-label={tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              title={tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro'}
+            >
+              <Icono nombre={tema === 'oscuro' ? 'sol' : 'luna'} size={18} />
+            </button>
+            <MenuUsuario />
+            <button type="button" className="btn-icono" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
+              <Icono nombre="salir" size={18} />
+            </button>
+          </div>
         </div>
+      </header>
 
+      <main className="contenido">
         <Outlet />
-      </div>
+      </main>
 
-      <CambiarRegion show={cambiarRegion} onClose={() => setCambiarRegion(false)} />
+      <footer className="pie">
+        <span>Inventario TI · {user.region?.nombre}</span>
+        <span>© {new Date().getFullYear()} Nidec. Uso interno.</span>
+      </footer>
     </div>
   );
 }
+
+export { FOTO_DEFAULT };

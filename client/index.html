@@ -2,19 +2,20 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
-    <title>Sistema Inventario TI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#193527" />
+    <title>Inventario TI · Nidec</title>
     <link rel="icon" href="/assets/img/kaiadmin/favicon.ico" type="image/x-icon" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-    <!-- Mismo tema que la versión PHP (KaiAdmin + Bootstrap 5) -->
+    <!-- Iconos (Font Awesome) y rejilla/formularios de Bootstrap 5; el tema Nidec está en src/styles/nidec.css -->
     <link rel="stylesheet" href="/assets/css/fonts.min.css" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/assets/css/plugins.min.css" />
-    <link rel="stylesheet" href="/assets/css/kaiadmin.min.css" />
+    <script>
+      // Aplica el modo oscuro antes de pintar (evita el parpadeo)
+      try {
+        document.documentElement.dataset.tema = localStorage.getItem('inventario.tema') || 'claro';
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, FOTO_DEFAULT, urlArchivo } from '../api.js';
 import DataTable from '../components/DataTable.jsx';
 import Modal, { ConfirmModal } from '../components/Modal.jsx';
-import { BotonGuardar, Buscador, Campo, PageCard } from '../components/ui.jsx';
+import { AccionesFila, BotonGuardar, Buscador, Campo, PageCard } from '../components/ui.jsx';
+import Icono from '../components/Icono.jsx';
+import { useRegiones } from '../regiones.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const VACIO = { id: null, nombre: '', usuario: '', password: '', perfil: '', foto: null, fotoActual: null };
+const VACIO = { id: null, nombre: '', usuario: '', password: '', perfil: '', foto: null, fotoActual: null, plantas: [], plantaOrigen: null };
 
 export function validarImagenPerfil(file, toast) {
   if (!file) return true;
@@ -24,6 +26,7 @@ export function validarImagenPerfil(file, toast) {
 export default function Usuarios() {
   const toast = useToast();
   const { user } = useAuth();
+  const regiones = useRegiones();
   const [rows, setRows] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -46,7 +49,8 @@ export default function Usuarios() {
   useEffect(cargar, [cargar]);
 
   const abrirNuevo = () => {
-    setForm({ ...VACIO });
+    // Por omisión el usuario nuevo puede entrar a todas las plantas
+    setForm({ ...VACIO, plantas: regiones.map((r) => r.id), plantaOrigen: user.region?.id });
     setPreview(FOTO_DEFAULT);
     setUsuarioExiste(false);
   };
@@ -54,7 +58,16 @@ export default function Usuarios() {
   const abrirEditar = async (id) => {
     try {
       const { data } = await api.get(`/api/usuarios/${id}`);
-      setForm({ ...VACIO, id: data.id, nombre: data.nombre, usuario: data.usuario, perfil: data.perfil, fotoActual: data.foto });
+      setForm({
+        ...VACIO,
+        id: data.id,
+        nombre: data.nombre,
+        usuario: data.usuario,
+        perfil: data.perfil,
+        fotoActual: data.foto,
+        plantas: data.plantas || [data.region_id],
+        plantaOrigen: data.region_id,
+      });
       setPreview(urlArchivo(data.foto) || FOTO_DEFAULT);
     } catch (e) {
       toast.error(e.message);
@@ -93,6 +106,7 @@ export default function Usuarios() {
     fd.append('perfil', form.perfil);
     if (form.password) fd.append('password', form.password);
     if (form.foto) fd.append('foto', form.foto);
+    fd.append('plantas', JSON.stringify(form.plantas));
     setGuardando(true);
     try {
       let r;
@@ -156,7 +170,32 @@ export default function Usuarios() {
         />
       ),
     },
-    { key: 'perfil', header: 'Perfil' },
+    {
+      key: 'perfil',
+      header: 'Perfil',
+      render: (r) => (
+        <span className={`pildora ${r.perfil === 'Administrador' ? 'pildora-verde' : 'pildora-gris'}`}>
+          {r.perfil === 'Administrador' ? 'Administrador' : 'Usuario · solo lectura'}
+        </span>
+      ),
+    },
+    {
+      key: 'plantas',
+      header: 'Plantas',
+      searchValue: (r) => (r.plantas === 'todas' ? 'Todas' : (r.plantas || []).map((id) => regiones.find((x) => x.id === id)?.clave).join(' ')),
+      render: (r) =>
+        r.plantas === 'todas' ? (
+          <span className="texto-tenue">Todas</span>
+        ) : (
+          <span className="d-inline-flex gap-1">
+            {(r.plantas || []).map((id) => (
+              <span key={id} className="pildora pildora-gris" title={regiones.find((x) => x.id === id)?.nombre}>
+                {regiones.find((x) => x.id === id)?.clave || id}
+              </span>
+            ))}
+          </span>
+        ),
+    },
     {
       key: 'estado',
       header: 'Estado',
@@ -165,10 +204,10 @@ export default function Usuarios() {
       render: (r) => (
         <button
           type="button"
-          className={`btn btn-xs ${r.estado === 1 ? 'btn-success' : 'btn-danger'}`}
+          className={`pildora border-0 ${r.estado === 1 ? 'pildora-verde' : 'pildora-roja'}`}
           onClick={() => cambiarEstado(r)}
           disabled={r.id === user.id}
-          title={r.id === user.id ? 'No puedes desactivar tu propio usuario' : 'Cambiar estado'}
+          title={r.id === user.id ? 'No puedes desactivar tu propio usuario' : 'Clic para activar o desactivar'}
         >
           {r.estado === 1 ? 'Activado' : 'Desactivado'}
         </button>
@@ -180,37 +219,28 @@ export default function Usuarios() {
       sortable: false,
       className: 'text-center',
       render: (r) => (
-        <div className="btn-group-gap justify-content-center">
-          <button type="button" className="btn btn-sm btn-warning" title="Editar" onClick={() => abrirEditar(r.id)}>
-            <i className="fas fa-edit" />
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-danger"
-            title="Eliminar"
-            onClick={() => setAEliminar(r)}
-            disabled={r.usuario === 'admin' || r.id === user.id}
-          >
-            <i className="fas fa-trash" />
-          </button>
-        </div>
+        <AccionesFila
+          onEditar={() => abrirEditar(r.id)}
+          onEliminar={r.usuario === 'admin' || r.id === user.id || r.region_id !== user.region?.id ? null : () => setAEliminar(r)}
+        />
       ),
     },
   ];
 
   return (
     <PageCard
-      title="Administrar Usuarios"
+      eyebrow="Administración"
+      title="Usuarios"
+      icon="usuarios"
+      subtitle={`Usuarios con acceso a ${user.region?.nombre}. El Administrador agrega, edita y elimina; el Usuario solo consulta.`}
       action={
-        <button type="button" className="btn btn-primary btn-round" onClick={abrirNuevo}>
-          <i className="fa fa-plus me-1" /> Agregar Usuario
+        <button type="button" className="btn btn-nidec" onClick={abrirNuevo}>
+          <Icono nombre="mas" size={18} /> Agregar usuario
         </button>
       }
     >
-      <div className="row mb-3">
-        <div className="col-md-4">
-          <Buscador value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, usuario o perfil..." />
-        </div>
+      <div className="barra-filtros">
+        <Buscador value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, usuario, perfil o planta..." />
       </div>
 
       <DataTable columns={columns} rows={rows} search={busqueda} loading={cargando} tableId="tablaUsuarios" />
@@ -261,6 +291,40 @@ export default function Usuarios() {
                 </p>
               )}
             </Campo>
+            <div className="form-group">
+              <span className="form-etiqueta">
+                Plantas a las que puede entrar <span className="obligatorio">*</span>
+              </span>
+              {form.perfil === 'Administrador' ? (
+                <p className="help-block mb-0">Los administradores pueden entrar y cambiar a todas las plantas.</p>
+              ) : (
+                <>
+                  <div className="plantas-checks">
+                    {regiones.map((r) => {
+                      const origen = r.id === (form.plantaOrigen ?? user.region?.id);
+                      return (
+                        <label key={r.id} className="planta-check">
+                          <input
+                            type="checkbox"
+                            checked={origen || form.plantas.includes(r.id)}
+                            disabled={origen}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                plantas: e.target.checked ? [...new Set([...f.plantas, r.id])] : f.plantas.filter((x) => x !== r.id),
+                              }))
+                            }
+                          />
+                          {r.nombre}
+                          {origen && <small className="texto-tenue">(su planta)</small>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="help-block mb-0 mt-1">Podrá cambiar entre estas plantas con el botón de planta de la barra superior.</p>
+                </>
+              )}
+            </div>
             <Campo label="Foto de perfil">
               <input type="file" className="form-control" accept="image/jpeg,image/png" onChange={elegirFoto} />
               <p className="help-block small text-muted mb-0">Peso máximo de la foto 2MB (JPEG o PNG)</p>

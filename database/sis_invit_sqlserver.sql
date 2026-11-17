@@ -1,6 +1,6 @@
 /* =====================================================================
    Sistema de Inventario TI — Esquema para Microsoft SQL Server
-   Versión 3: plantas (regiones) + módulos Celulares, Cómputo administrativo
+   Versión 5: plantas (regiones) + módulos Celulares, Cómputo administrativo
    (submódulos PC y Laptop), Cómputo industrial, Monitores y Proyectores.
    Si ya tienes la versión 2 instalada con datos, usa migracion_v3_sqlserver.sql.
    Compatible con SQL Server 2016 o superior / Azure SQL.
@@ -48,6 +48,7 @@ DROP TABLE IF EXISTS dbo.impresoras;
 DROP TABLE IF EXISTS dbo.camaras;               -- versión anterior
 DROP TABLE IF EXISTS dbo.computadoras;          -- versión anterior
 DROP TABLE IF EXISTS dbo.tarjetas_acceso;       -- versión anterior
+DROP TABLE IF EXISTS dbo.usuario_regiones;
 DROP TABLE IF EXISTS dbo.usuarios;
 DROP TABLE IF EXISTS dbo.regiones;
 GO
@@ -89,6 +90,17 @@ CREATE TABLE dbo.usuarios (
 );
 GO
 
+/* Plantas adicionales a las que puede entrar un usuario (además de su planta).
+   Los administradores entran a todas las plantas. */
+CREATE TABLE dbo.usuario_regiones (
+    usuario_id  INT NOT NULL,
+    region_id   INT NOT NULL,
+    CONSTRAINT pk_usuario_regiones PRIMARY KEY (usuario_id, region_id),
+    CONSTRAINT fk_usureg_usuario FOREIGN KEY (usuario_id) REFERENCES dbo.usuarios (id) ON DELETE CASCADE,
+    CONSTRAINT fk_usureg_region  FOREIGN KEY (region_id)  REFERENCES dbo.regiones (id)
+);
+GO
+
 /* ---------------------------------------------------------------------
    4. Módulos de inventario nuevos
       asignado: 1 = Asignado, 0 = Sin asignar
@@ -124,6 +136,10 @@ CREATE TABLE dbo.computo_administrativo (
     tipo_equipo         NVARCHAR(10)      NOT NULL CONSTRAINT df_compadm_tipo DEFAULT N'PC',   -- submódulo: PC | LAPTOP
     hostname            NVARCHAR(100)     NULL,
     usuario_asignado    NVARCHAR(200)     NULL,
+    numero_serie        NVARCHAR(100)     NULL,
+    marca               NVARCHAR(100)     NULL,
+    modelo              NVARCHAR(100)     NULL,
+    responsiva          NVARCHAR(500)     NULL,      -- ruta de la responsiva (opcional)
     departamento        NVARCHAR(150)     NOT NULL,
     sistema_operativo   NVARCHAR(100)     NOT NULL,
     procesador          NVARCHAR(150)     NOT NULL,
@@ -150,6 +166,10 @@ CREATE TABLE dbo.computo_industrial (
     region_id           INT               NOT NULL,
     hostname            NVARCHAR(100)     NULL,
     usuario_asignado    NVARCHAR(200)     NULL,
+    numero_serie        NVARCHAR(100)     NULL,
+    marca               NVARCHAR(100)     NULL,
+    modelo              NVARCHAR(100)     NULL,
+    responsiva          NVARCHAR(500)     NULL,      -- ruta de la responsiva (opcional)
     departamento        NVARCHAR(150)     NOT NULL,
     sistema_operativo   NVARCHAR(100)     NOT NULL,
     procesador          NVARCHAR(150)     NOT NULL,
@@ -182,6 +202,12 @@ CREATE TABLE dbo.monitores (
     modelo            NVARCHAR(100)     NOT NULL,
     numero_serie      NVARCHAR(100)     NOT NULL,
     vigencia          DATE              NULL,
+    sistema_operativo NVARCHAR(100)     NULL,
+    procesador        NVARCHAR(150)     NULL,
+    hd                NVARCHAR(50)      NULL,
+    ram               NVARCHAR(50)      NULL,
+    adaptador_cargador NVARCHAR(150)    NULL,
+    responsiva        NVARCHAR(500)     NULL,      -- ruta de la responsiva (opcional)
     numero_ticket     NVARCHAR(50)      NULL,
     asignado          TINYINT           NOT NULL CONSTRAINT df_monitores_asignado DEFAULT 0,
     usuario_id        INT               NOT NULL,
@@ -207,6 +233,12 @@ CREATE TABLE dbo.proyectores (
     modelo            NVARCHAR(100)     NOT NULL,
     numero_serie      NVARCHAR(100)     NOT NULL,
     vigencia          DATE              NULL,
+    sistema_operativo NVARCHAR(100)     NULL,
+    procesador        NVARCHAR(150)     NULL,
+    hd                NVARCHAR(50)      NULL,
+    ram               NVARCHAR(50)      NULL,
+    adaptador_cargador NVARCHAR(150)    NULL,
+    responsiva        NVARCHAR(500)     NULL,      -- ruta de la responsiva (opcional)
     numero_ticket     NVARCHAR(50)      NULL,
     asignado          TINYINT           NOT NULL CONSTRAINT df_proyectores_asignado DEFAULT 0,
     usuario_id        INT               NOT NULL,
@@ -339,6 +371,8 @@ GO
    --------------------------------------------------------------------- */
 CREATE UNIQUE INDEX uq_celulares_serie      ON dbo.celulares (region_id, numero_serie) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uq_celulares_imei       ON dbo.celulares (region_id, imei)         WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_compadm_serie        ON dbo.computo_administrativo (region_id, numero_serie) WHERE deleted_at IS NULL AND numero_serie IS NOT NULL;
+CREATE UNIQUE INDEX uq_compind_serie        ON dbo.computo_industrial (region_id, numero_serie) WHERE deleted_at IS NULL AND numero_serie IS NOT NULL;
 CREATE UNIQUE INDEX uq_monitores_serie      ON dbo.monitores (region_id, numero_serie) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uq_proyectores_serie    ON dbo.proyectores (region_id, numero_serie) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uq_impresoras_serie     ON dbo.impresoras (region_id, serie)       WHERE deleted_at IS NULL;

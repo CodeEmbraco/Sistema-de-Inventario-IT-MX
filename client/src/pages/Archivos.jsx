@@ -3,7 +3,7 @@ import { api, formatBytes, formatoFecha, uploadConProgreso, urlArchivoAuditoria 
 import Modal, { ConfirmModal } from '../components/Modal.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { SoloLectura } from '../components/ui.jsx';
+import { HeroPagina, SoloLectura } from '../components/ui.jsx';
 
 const BASE = '/api/archivos';
 const MAX_MB = 500;
@@ -438,18 +438,19 @@ export default function Archivos() {
   const alguno = seleccion.length > 0;
 
   return (
-    <div className="container">
-      <div className="page-inner">
-        <div className="card">
+    <>
+    <HeroPagina
+      eyebrow="Documentos"
+      title="Archivos de auditoría"
+      icon="carpeta"
+      subtitle={`Documentos de auditoría de la planta. ${puedeEditar ? 'Puedes crear carpetas, subir, mover y renombrar.' : 'Tu perfil es de solo lectura: puedes ver y descargar.'}`}
+      action={!puedeEditar ? <SoloLectura /> : null}
+    />
+    <div className="contenedor sobre-hero">
+      <div>
+        <div className="card panel p-0">
           <div className="card-header">
-            <div className="d-flex align-items-center flex-wrap gap-2">
-              <h4 className="card-title mb-0">Administrar Archivos</h4>
-              {!puedeEditar && (
-                <div className="ms-auto">
-                  <SoloLectura />
-                </div>
-              )}
-            </div>
+            <h2 className="panel-titulo">Explorador</h2>
           </div>
           <div className="card-body p-0">
             <div className="file-explorer">
@@ -975,5 +976,6 @@ export default function Archivos() {
         </p>
       </ConfirmModal>
     </div>
+    </>
   );
 }

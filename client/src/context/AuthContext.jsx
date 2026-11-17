@@ -34,13 +34,25 @@ export function AuthProvider({ children }) {
     return r.user;
   }, []);
 
+  /** Cambia a otra planta sin volver a escribir la contraseña (si el usuario tiene acceso). */
+  const cambiarPlanta = useCallback(async (regionId) => {
+    const r = await api.post('/api/auth/cambiar-planta', { region_id: regionId });
+    try {
+      localStorage.setItem('inventario.region', String(regionId));
+    } catch {
+      /* sin almacenamiento */
+    }
+    setUser(r.user);
+    return r.user;
+  }, []);
+
   const logout = useCallback(async () => {
     await api.post('/api/auth/logout').catch(() => {});
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, cargando, login, logout, esAdmin: user?.perfil === 'Administrador' }}>
+    <AuthContext.Provider value={{ user, setUser, cargando, login, logout, cambiarPlanta, esAdmin: user?.perfil === 'Administrador' }}>
       {children}
     </AuthContext.Provider>
   );
