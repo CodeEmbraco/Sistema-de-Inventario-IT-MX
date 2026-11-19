@@ -18,39 +18,40 @@
 const t = (etiqueta, extra = {}) => ({ etiqueta, tipo: 'texto', ...extra });
 const f = (etiqueta, extra = {}) => ({ etiqueta, tipo: 'fecha', ...extra });
 
-const camposComputo = {
+/**
+ * Mismos campos para Cómputo administrativo (PC y Laptop), Cómputo industrial,
+ * Monitores y Proyectores. Solo hostname y número de ticket son opcionales.
+ * La responsiva (opcional) y el estado (Asignado / Sin asignar) van aparte en el formulario.
+ */
+const camposEquipo = {
   hostname: t('Hostname', { enTabla: true, placeholder: 'Ej: MX-ADM-001' }),
-  usuario_asignado: t('Usuario', { siAsignado: true, sugerir: true, enTabla: true, placeholder: 'Nombre de quien lo tiene asignado' }),
+  usuario_asignado: t('Usuario', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Nombre de quien lo tiene asignado' }),
   departamento: t('Departamento', { requerido: true, sugerir: true, enTabla: true }),
-  sistema_operativo: t('Sistema operativo', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: Windows 11 Pro' }),
-  procesador: t('Procesador', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: Intel Core i5-1245U' }),
-  hd: t('HD', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: 512 GB SSD' }),
-  ram: t('RAM', { requerido: true, sugerir: true, enTabla: true, placeholder: 'Ej: 16 GB' }),
+  sistema_operativo: t('Sistema operativo', { requerido: true, sugerir: true, placeholder: 'Ej: Windows 11 Pro' }),
+  procesador: t('Procesador', { requerido: true, sugerir: true, placeholder: 'Ej: Intel Core i5-1245U' }),
+  hd: t('HD', { requerido: true, sugerir: true, placeholder: 'Ej: 512 GB SSD' }),
+  ram: t('RAM', { requerido: true, sugerir: true, placeholder: 'Ej: 16 GB' }),
   numero_serie: t('Número de serie', { requerido: true, unico: true, enTabla: true }),
-  vigencia: f('Vigencia', { enTabla: true }),
-  adaptador_cargador: t('Adaptador cargador', { sugerir: true, enTabla: true, placeholder: 'Ej: Dell 65W USB-C' }),
-  numero_ticket: t('Número de ticket', { enTabla: true, placeholder: 'Ej: INC-1001' }),
+  vigencia: f('Vigencia', { requerido: true, enTabla: true }),
+  modelo: t('Modelo', { requerido: true, sugerir: true, enTabla: true }),
+  marca: t('Marca', { requerido: true, sugerir: true, enTabla: true }),
+  adaptador_cargador: t('Adaptador cargador', { requerido: true, sugerir: true, placeholder: 'Ej: Dell 65W USB-C' }),
+  numero_ticket: t('Número de ticket (opcional)', { placeholder: 'Ej: INC-1001' }),
 };
 
-const camposPerifericos = {
-  hostname: t('Hostname', { enTabla: true }),
-  usuario_asignado: t('Usuario', { siAsignado: true, sugerir: true, enTabla: true, placeholder: 'Nombre de quien lo tiene asignado' }),
-  fecha_asignacion: f('Fecha de asignación', { siAsignado: true }),
-  departamento: t('Departamento', { sugerir: true, enTabla: true }),
-  ubicacion: t('Ubicación', { sugerir: true, enTabla: true }),
-  marca: t('Marca', { requerido: true, sugerir: true, enTabla: true }),
-  modelo: t('Modelo', { requerido: true, sugerir: true, enTabla: true }),
-  numero_serie: t('Número de serie', { requerido: true, unico: true, enTabla: true }),
-  vigencia: f('Vigencia', { enTabla: true }),
-  numero_ticket: t('Número de ticket', { placeholder: 'Ej: INC-1001' }),
+const responsiva = {
+  titulo: 'Responsiva',
+  accept: '.pdf,.jpg,.jpeg,.png,.gif,.bmp,.doc,.docx,.xls,.xlsx',
+  maxMB: 10,
+  ayuda: 'Opcional. PDF, imágenes (JPG, PNG, GIF, BMP), Word o Excel. Máximo 10 MB.',
 };
 
 export const MODULOS = {
   celulares: {
     ruta: '/celulares',
     menu: 'Celulares',
-    icono: 'fas fa-mobile-alt',
-    titulo: 'Administrar Celulares',
+    icono: 'celular',
+    titulo: 'Celulares',
     singular: 'Celular',
     agregar: 'Agregar Celular',
     busqueda: 'Buscar por teléfono, usuario, serie o IMEI...',
@@ -75,53 +76,57 @@ export const MODULOS = {
   computo_administrativo: {
     ruta: '/computo-administrativo',
     menu: 'Cómputo administrativo',
-    icono: 'fas fa-laptop',
-    titulo: 'Equipo de Cómputo Administrativo',
+    icono: 'laptop',
+    titulo: 'Cómputo Administrativo',
     singular: 'Equipo',
     agregar: 'Agregar Equipo',
-    busqueda: 'Buscar por hostname, usuario, departamento o procesador...',
-    campos: camposComputo,
+    busqueda: 'Buscar por serie, hostname, usuario, marca o departamento...',
+    campos: camposEquipo,
+    archivo: responsiva,
     subtipos: {
       columna: 'tipo_equipo',
       opciones: [
-        { valor: 'PC', ruta: 'pc', menu: 'PC', icono: 'fas fa-desktop', singular: 'PC', agregar: 'Agregar PC' },
-        { valor: 'LAPTOP', ruta: 'laptop', menu: 'Laptop', icono: 'fas fa-laptop', singular: 'Laptop', agregar: 'Agregar Laptop' },
+        { valor: 'PC', ruta: 'pc', menu: 'PC', icono: 'pc', singular: 'PC', agregar: 'Agregar PC' },
+        { valor: 'LAPTOP', ruta: 'laptop', menu: 'Laptop', icono: 'laptop', singular: 'Laptop', agregar: 'Agregar Laptop' },
       ],
     },
   },
   computo_industrial: {
     ruta: '/computo-industrial',
     menu: 'Cómputo industrial',
-    icono: 'fas fa-industry',
-    titulo: 'Equipo de Cómputo Industrial',
+    icono: 'industria',
+    titulo: 'Cómputo Industrial',
     singular: 'Equipo',
     agregar: 'Agregar Equipo',
-    busqueda: 'Buscar por hostname, usuario, departamento o procesador...',
-    campos: camposComputo,
+    busqueda: 'Buscar por serie, hostname, usuario, marca o departamento...',
+    campos: camposEquipo,
+    archivo: responsiva,
   },
   monitores: {
     ruta: '/monitores',
     menu: 'Monitores',
-    icono: 'fas fa-desktop',
-    titulo: 'Administrar Monitores',
+    icono: 'monitor',
+    titulo: 'Monitores',
     singular: 'Monitor',
     agregar: 'Agregar Monitor',
-    busqueda: 'Buscar por hostname, usuario, marca o serie...',
-    campos: camposPerifericos,
+    busqueda: 'Buscar por serie, hostname, usuario, marca o departamento...',
+    campos: camposEquipo,
+    archivo: responsiva,
   },
   proyectores: {
     ruta: '/proyectores',
     menu: 'Proyectores',
-    icono: 'fas fa-video',
-    titulo: 'Administrar Proyectores',
+    icono: 'proyector',
+    titulo: 'Proyectores',
     singular: 'Proyector',
     agregar: 'Agregar Proyector',
-    busqueda: 'Buscar por hostname, usuario, marca o serie...',
-    campos: camposPerifericos,
+    busqueda: 'Buscar por serie, hostname, usuario, marca o departamento...',
+    campos: camposEquipo,
+    archivo: responsiva,
   },
 };
 
-export const RUTA_INICIO = MODULOS.celulares.ruta;
+export const RUTA_INICIO = '/inicio';
 
 /**
  * Pantallas a mostrar: un módulo sin subtipos es una pantalla; uno con subtipos

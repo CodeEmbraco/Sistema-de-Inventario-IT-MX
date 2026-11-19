@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, formatoFecha, urlArchivo } from '../api.js';
+import { api, formatoFecha, urlResponsiva } from '../api.js';
 import DataTable from '../components/DataTable.jsx';
 import Modal, { ConfirmModal } from '../components/Modal.jsx';
 import Autocomplete from '../components/Autocomplete.jsx';
@@ -21,6 +21,7 @@ import {
 } from '../components/ui.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Icono from '../components/Icono.jsx';
 
 /**
  * Página genérica de inventario (Celulares, Cómputo administrativo/industrial,
@@ -30,7 +31,14 @@ import { useAuth } from '../context/AuthContext.jsx';
  *       Filtra el listado y se envía al guardar.
  * El perfil Usuario solo consulta (sin agregar, editar ni eliminar).
  */
-export default function ModuloEquipos({ clave, cfg, fijo = null }) {
+/** Días que faltan para una fecha YYYY-MM-DD (negativo = ya pasó). */
+function diasPara(valor) {
+  if (!valor) return null;
+  const [a, m, d] = String(valor).slice(0, 10).split('-').map(Number);
+  return Math.floor((new Date(a, m - 1, d) - new Date(new Date().toDateString())) / 86400000);
+}
+
+export default function ModuloEquipos({ clave, cfg, fijo = null, eyebrow }) {
   const toast = useToast();
   const { esAdmin } = useAuth();
   const puedeEditar = esAdmin;
@@ -38,7 +46,7 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
   const campos = cfg.campos;
   const nombres = Object.keys(campos);
 
-  const [rows, setRows] = useState([]);
+  const [todos, setTodos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [estado, setEstado] = useState('');
   const [busqueda, setBusqueda] = useState('');
@@ -59,13 +67,36 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
   const cargar = useCallback(() => {
     setCargando(true);
     api
-      .get(`${BASE}?${new URLSearchParams({ ...(estado ? { estado } : {}), ...(fijo || {}) })}`)
-      .then(setRows)
+      .get(`${BASE}?${new URLSearchParams({ ...(fijo || {}) })}`)
+      .then(setTodos)
       .catch((e) => toast.error(e.message))
       .finally(() => setCargando(false));
-  }, [BASE, estado, toast, fijo]);
+  }, [BASE, toast, fijo]);
 
   useEffect(cargar, [cargar]);
+
+  // El filtro de estado se aplica aquí para que las tarjetas de resumen siempre muestren el total
+  const rows = useMemo(
+    () =>
+      estado === 'asignado'
+        ? todos.filter((r) => Number(r.asignado) === 1)
+        : estado === 'sin_asignar'
+          ? todos.filter((r) => Number(r.asignado) !== 1)
+          : todos,
+    [todos, estado]
+  );
+  const conteos = useMemo(() => {
+    const asignados = todos.filter((r) => Number(r.asignado) === 1).length;
+    const dias = todos.map((r) => diasPara(r.vigencia)).filter((d) => d !== null);
+    return {
+      total: todos.length,
+      asignados,
+      sinAsignar: todos.length - asignados,
+      vencidas: dias.filter((d) => d < 0).length,
+      porVencer: dias.filter((d) => d >= 0 && d <= 30).length,
+      conResponsiva: todos.filter((r) => r.has_archivo).length,
+    };
+  }, [todos]);
 
   const obtener = async (id) => (await api.get(`${BASE}/${id}`)).data;
 
@@ -83,7 +114,7 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
         asignado: Number(r.asignado) === 1,
         ...Object.fromEntries(nombres.map((n) => [n, r[n] ?? ''])),
       });
-      setArchivoActual(r.has_archivo ? { ruta: r.responsiva, tipo: r.archivo_tipo } : null);
+      setArchivoActual(r.has_archivo ? r : null);
       setArchivo(null);
     } catch (e) {
       toast.error(e.message);
@@ -187,16 +218,28 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
             searchValue: () => '',
             render: (r) =>
               r.has_archivo ? (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-info"
-                  title={`Ver ${cfg.archivo.titulo.toLowerCase()}`}
-                  onClick={() => setVisor({ ruta: r.responsiva, tipo: r.archivo_tipo })}
-                >
-                  <i className="fas fa-eye" />
-                </button>
+                <div className="acciones">
+                  <button
+                    type="button"
+                    className="btn-accion"
+                    title={`Ver ${cfg.archivo.titulo.toLowerCase()}`}
+                    aria-label={`Ver ${cfg.archivo.titulo.toLowerCase()}`}
+                    onClick={() => setVisor(r)}
+                  >
+                    <Icono nombre="documento" size={17} />
+                  </button>
+                  <a
+                    className="btn-accion"
+                    href={urlResponsiva(clave, r, true)}
+                    download
+                    title={`Descargar ${cfg.archivo.titulo.toLowerCase()}`}
+                    aria-label={`Descargar ${cfg.archivo.titulo.toLowerCase()}`}
+                  >
+                    <Icono nombre="descargar" size={17} />
+                  </a>
+                </div>
               ) : (
-                <span className="badge badge-secondary">Sin {cfg.archivo.titulo.toLowerCase()}</span>
+                <span className="texto-tenue">Sin archivo</span>
               ),
           },
         ]
@@ -221,8 +264,17 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
   ];
 
   // ---------------------------------------------------------------- formulario
-  const mitad = Math.ceil(nombres.length / 2);
-  const columnasForm = [nombres.slice(0, mitad), nombres.slice(mitad)];
+  const usaVigencia = nombres.includes('vigencia');
+  const stats = [
+    { label: 'Total de equipos', value: conteos.total, icono: cfg.icono, nota: `${cfg.titulo.split(' · ')[1] || 'Registrados'} en esta planta` },
+    { label: 'Asignados', value: conteos.asignados, icono: 'usuario', tono: 'verde', nota: `${conteos.sinAsignar} sin asignar` },
+    usaVigencia
+      ? { label: 'Vigencia por vencer', value: conteos.porVencer, icono: 'reloj', tono: conteos.porVencer ? 'ambar' : '', nota: 'En los próximos 30 días' }
+      : null,
+    usaVigencia
+      ? { label: 'Vigencia vencida', value: conteos.vencidas, icono: 'alerta', tono: conteos.vencidas ? 'rojo' : '', nota: 'Requieren renovación' }
+      : { label: 'Con responsiva', value: conteos.conResponsiva, icono: 'documento', nota: 'Archivo firmado' },
+  ].filter(Boolean);
 
   const campoForm = (n) => {
     const c = campos[n];
@@ -253,24 +305,24 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
 
   return (
     <PageCard
+      eyebrow={eyebrow || 'Inventario'}
       title={cfg.titulo}
+      icon={cfg.icono}
+      subtitle={puedeEditar ? 'Agrega, edita o elimina equipos y consulta su responsiva.' : 'Consulta los equipos y su responsiva. Tu perfil es de solo lectura.'}
+      stats={stats}
       action={
         puedeEditar ? (
-          <button type="button" className="btn btn-primary btn-round" onClick={abrirNuevo}>
-            <i className="fa fa-plus me-1" /> {cfg.agregar}
+          <button type="button" className="btn btn-nidec" onClick={abrirNuevo}>
+            <Icono nombre="mas" size={18} /> {cfg.agregar}
           </button>
         ) : (
           <SoloLectura />
         )
       }
     >
-      <div className="row g-2 mb-3">
-        <div className="col-md-3">
-          <FiltroAsignado value={estado} onChange={setEstado} />
-        </div>
-        <div className="col-md-5">
-          <Buscador value={busqueda} onChange={setBusqueda} placeholder={cfg.busqueda} />
-        </div>
+      <div className="barra-filtros">
+        <FiltroAsignado value={estado} onChange={setEstado} conteos={conteos} />
+        <Buscador value={busqueda} onChange={setBusqueda} placeholder={cfg.busqueda} />
       </div>
 
       <DataTable columns={columns} rows={rows} search={busqueda} loading={cargando} tableId={`tabla-${clave}`} />
@@ -279,35 +331,32 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
       <Modal show={puedeEditar && !!form} onClose={() => setForm(null)} size="lg" title={form?.id ? `Editar ${cfg.singular}` : cfg.agregar}>
         {form && (
           <form onSubmit={guardar}>
-            <div className="asignado-switch mb-3">
-              <div className="form-check form-switch mb-0">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  role="switch"
-                  id={`asignado-${clave}`}
-                  checked={form.asignado}
-                  onChange={(e) => setForm((x) => ({ ...x, asignado: e.target.checked }))}
-                />
-                <label className="form-check-label fw-bold" htmlFor={`asignado-${clave}`}>
-                  {form.asignado ? 'Asignado' : 'Sin asignar'}
-                </label>
-              </div>
-              <small className="text-muted">
-                {nombres.some((n) => campos[n].siAsignado)
-                  ? form.asignado
-                    ? 'Los campos de asignación son obligatorios.'
-                    : 'Equipo disponible: los datos de asignación son opcionales.'
-                  : 'Indica si el equipo está asignado a alguien.'}
-              </small>
-            </div>
+            <p className="form-nota">
+              Los campos con <span className="obligatorio">*</span> son obligatorios.
+            </p>
+            <div className="form-rejilla">{nombres.map(campoForm)}</div>
 
-            <div className="row">
-              {columnasForm.map((lista, i) => (
-                <div className="col-md-6" key={i}>
-                  {lista.map(campoForm)}
-                </div>
-              ))}
+            <div className="form-group">
+              <span className="form-etiqueta">
+                Estado <span className="obligatorio">*</span>
+              </span>
+              <div className="segmentado segmentado-grande" role="radiogroup" aria-label="Estado del equipo">
+                {[
+                  [true, 'Asignado'],
+                  [false, 'Sin asignar'],
+                ].map(([v, t]) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.asignado === v}
+                    className={form.asignado === v ? 'activo' : ''}
+                    onClick={() => setForm((x) => ({ ...x, asignado: v }))}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {cfg.archivo && (
@@ -328,7 +377,7 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
               <button type="button" className="btn btn-secondary" onClick={() => setForm(null)}>
                 Cancelar
               </button>
-              <BotonGuardar busy={guardando}>{form.id ? 'Guardar Cambios' : 'Guardar'}</BotonGuardar>
+              <BotonGuardar busy={guardando}>{form.id ? 'Guardar cambios' : 'Guardar'}</BotonGuardar>
             </div>
           </form>
         )}
@@ -366,13 +415,14 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
               {cfg.archivo && (
                 <DetailRow label={cfg.archivo.titulo}>
                   {detalle.has_archivo ? (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-info"
-                      onClick={() => setVisor({ ruta: detalle.responsiva, tipo: detalle.archivo_tipo })}
-                    >
-                      <i className="fas fa-eye" /> Ver {cfg.archivo.titulo.toLowerCase()}
-                    </button>
+                    <span className="d-inline-flex gap-2 flex-wrap">
+                      <button type="button" className="btn btn-sm btn-nidec-borde" onClick={() => setVisor(detalle)}>
+                        <Icono nombre="ojo" size={16} /> Ver
+                      </button>
+                      <a className="btn btn-sm btn-nidec-borde" href={urlResponsiva(clave, detalle, true)} download>
+                        <Icono nombre="descargar" size={16} /> Descargar
+                      </a>
+                    </span>
                   ) : (
                     'No disponible'
                   )}
@@ -418,8 +468,11 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
         bodyClass="text-center"
         footer={
           <>
-            <a href={urlArchivo(visor?.ruta)} className="btn btn-primary" target="_blank" rel="noreferrer" download>
-              <i className="fas fa-download" /> Descargar
+            <a href={urlResponsiva(clave, visor, true)} className="btn btn-nidec" download>
+              <Icono nombre="descargar" size={17} /> Descargar
+            </a>
+            <a href={urlResponsiva(clave, visor)} className="btn btn-nidec-borde" target="_blank" rel="noreferrer">
+              <Icono nombre="externo" size={17} /> Abrir en otra pestaña
             </a>
             <button type="button" className="btn btn-secondary" onClick={() => setVisor(null)}>
               Cerrar
@@ -427,7 +480,15 @@ export default function ModuloEquipos({ clave, cfg, fijo = null }) {
           </>
         }
       >
-        {visor && <VisorArchivo ruta={visor.ruta} tipo={visor.tipo} tituloDocumento={cfg.archivo?.titulo} />}
+        {visor && (
+          <VisorArchivo
+            ruta={visor.responsiva}
+            tipo={visor.archivo_tipo}
+            url={urlResponsiva(clave, visor)}
+            urlDescarga={urlResponsiva(clave, visor, true)}
+            tituloDocumento={cfg.archivo?.titulo}
+          />
+        )}
       </Modal>
 
       <ConfirmModal show={!!aEliminar} onClose={() => setAEliminar(null)} onConfirm={eliminar} busy={guardando}>

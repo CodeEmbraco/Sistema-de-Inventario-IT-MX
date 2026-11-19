@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Sistema de Inventario TI — Esquema para MySQL 8 / MariaDB 10.4+
--- Versión 3: plantas (regiones) + módulos nuevos (cómputo administrativo con PC y Laptop).
+-- Versión 4: plantas (regiones) + módulos nuevos (cómputo administrativo con PC y Laptop).
 -- Mismo diseño que sis_invit_sqlserver.sql (la base principal es SQL Server).
 -- ATENCIÓN: borra y vuelve a crear todas las tablas.
 -- =====================================================================
@@ -8,7 +8,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS inventario_logs, celulares, computo_administrativo, computo_industrial, monitores, proyectores,
+DROP TABLE IF EXISTS usuario_regiones, inventario_logs, celulares, computo_administrativo, computo_industrial, monitores, proyectores,
   portapapeles, archivos_logs, impresoras_logs, camaras_logs, computadoras_logs, tarjetas_acceso_logs,
   archivos, impresoras, camaras, computadoras, tarjetas_acceso, usuarios, regiones;
 
@@ -35,6 +35,15 @@ CREATE TABLE usuarios (
   fecha         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_usuarios_region_usuario (region_id, usuario),
   CONSTRAINT fk_usuarios_region FOREIGN KEY (region_id) REFERENCES regiones (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- Plantas adicionales a las que puede entrar un usuario (los administradores entran a todas)
+CREATE TABLE usuario_regiones (
+  usuario_id INT NOT NULL,
+  region_id  INT NOT NULL,
+  PRIMARY KEY (usuario_id, region_id),
+  CONSTRAINT fk_usureg_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_usureg_region  FOREIGN KEY (region_id)  REFERENCES regiones (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
 CREATE TABLE celulares (
@@ -66,6 +75,10 @@ CREATE TABLE computo_administrativo (
   tipo_equipo         ENUM('PC','LAPTOP') NOT NULL DEFAULT 'PC',
   hostname            VARCHAR(100) NULL,
   usuario_asignado    VARCHAR(200) NULL,
+  numero_serie        VARCHAR(100) NULL,
+  marca               VARCHAR(100) NULL,
+  modelo              VARCHAR(100) NULL,
+  responsiva          VARCHAR(500) NULL,
   departamento        VARCHAR(150) NOT NULL,
   sistema_operativo   VARCHAR(100) NOT NULL,
   procesador          VARCHAR(150) NOT NULL,
@@ -102,6 +115,12 @@ CREATE TABLE monitores (
   modelo            VARCHAR(100) NOT NULL,
   numero_serie      VARCHAR(100) NOT NULL,
   vigencia          DATE         NULL,
+  sistema_operativo VARCHAR(100) NULL,
+  procesador        VARCHAR(150) NULL,
+  hd                VARCHAR(50)  NULL,
+  ram               VARCHAR(50)  NULL,
+  adaptador_cargador VARCHAR(150) NULL,
+  responsiva        VARCHAR(500) NULL,
   numero_ticket     VARCHAR(50)  NULL,
   asignado          TINYINT      NOT NULL DEFAULT 0,
   usuario_id        INT          NOT NULL,

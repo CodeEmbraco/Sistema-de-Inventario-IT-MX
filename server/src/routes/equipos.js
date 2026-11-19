@@ -9,6 +9,7 @@
  *   POST   /
  *   PUT    /:id
  *   DELETE /:id
+ *   GET    /:id/archivo         ver la responsiva en el navegador (?descargar=1 la descarga)
  *   POST   /:id/archivo         (solo módulos con archivo adjunto, ej. responsiva)
  *   DELETE /:id/archivo
  *
@@ -17,7 +18,8 @@
 import { Router } from 'express';
 import { execute, insert, query, queryOne } from '../db.js';
 import { ah, aBool, badRequest, idParam, notFound, ok } from '../lib/http.js';
-import { borrarArchivo, EXT_IMAGEN, extension, guardarSubida, nombreOriginal, segundosUnix, subida } from '../lib/files.js';
+import { borrarArchivo, EXT_IMAGEN, extension, guardarSubida, nombreOriginal, rutaAbsoluta, segundosUnix, subida } from '../lib/files.js';
+import fsp from 'node:fs/promises';
 import { sugerencias } from '../lib/inventario.js';
 import { ETIQUETAS } from '../modulos.js';
 
@@ -41,8 +43,15 @@ export function crearRouterEquipos(clave, cfg) {
     return {
       ...row,
       has_archivo: Boolean(ruta),
-      archivo_tipo: ruta ? (EXT_IMAGEN.includes(extension(ruta)) ? 'image' : 'document') : null,
+      archivo_tipo: ruta ? tipoArchivo(ruta) : null,
     };
+  }
+
+  /** image | pdf | document (Word/Excel: no se pueden previsualizar en el navegador) */
+  function tipoArchivo(ruta) {
+    const ext = extension(ruta);
+    if (EXT_IMAGEN.includes(ext)) return 'image';
+    return ext === 'pdf' ? 'pdf' : 'document';
   }
 
   /** Lee y valida el cuerpo según la definición del módulo. */
@@ -204,6 +213,38 @@ export function crearRouterEquipos(clave, cfg) {
   );
 
   if (archivo) {
+    // Ver o descargar la responsiva. Se busca por el registro (no por la ruta) para respetar la planta.
+    router.get(
+      '/:id/archivo',
+      ah(async (req, res) => {
+        const id = idParam(req);
+        const actual = await buscar(id, req.region);
+        if (!actual) throw notFound(`${cfg.singular} no encontrado`);
+        const rel = actual[archivo.columna];
+        if (!rel) throw notFound('Este registro no tiene responsiva');
+        const abs = rutaAbsoluta(rel);
+        try {
+          if (!abs) throw new Error();
+          await fsp.access(abs);
+        } catch {
+          throw notFound('El archivo de la responsiva no se encontró en el servidor');
+        }
+        const ext = extension(rel);
+        const base = `Responsiva_${cfg.titulo(actual)}`
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Za-z0-9._-]+/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/_$/, '')
+          .slice(0, 120);
+        const nombre = `${base}.${ext}`;
+        if (req.query.descargar) res.attachment(nombre);
+        else res.setHeader('Content-Disposition', `inline; filename="${nombre}"`);
+        res.setHeader('Cache-Control', 'private, no-cache');
+        res.sendFile(abs);
+      })
+    );
+
     router.post(
       '/:id/archivo',
       upload.single('archivo'),

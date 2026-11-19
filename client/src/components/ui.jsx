@@ -1,5 +1,7 @@
 /* Piezas pequeñas compartidas por los módulos de inventario */
 import { urlArchivo } from '../api.js';
+import Icono from './Icono.jsx';
+import VisorPdf from './VisorPdf.jsx';
 
 export function EstadoBadge({ activo, femenino = false }) {
   const on = Number(activo) === 1;
@@ -10,16 +12,25 @@ export function EstadoBadge({ activo, femenino = false }) {
 /** Estado de los equipos de inventario: Asignado / Sin asignar */
 export function AsignadoBadge({ asignado }) {
   const si = Number(asignado) === 1;
-  return <span className={`badge ${si ? 'badge-asignado' : 'badge-sin-asignar'}`}>{si ? 'Asignado' : 'Sin asignar'}</span>;
+  return <span className={`pildora ${si ? 'pildora-verde' : 'pildora-gris'}`}>{si ? 'Asignado' : 'Sin asignar'}</span>;
 }
 
-export function FiltroAsignado({ value, onChange }) {
+/** Control segmentado Todos / Asignados / Sin asignar (con conteos opcionales). */
+export function FiltroAsignado({ value, onChange, conteos }) {
+  const opciones = [
+    ['', 'Todos', conteos?.total],
+    ['asignado', 'Asignados', conteos?.asignados],
+    ['sin_asignar', 'Sin asignar', conteos?.sinAsignar],
+  ];
   return (
-    <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Todos</option>
-      <option value="asignado">Asignados</option>
-      <option value="sin_asignar">Sin asignar</option>
-    </select>
+    <div className="segmentado" role="group" aria-label="Filtrar por estado">
+      {opciones.map(([v, t, n]) => (
+        <button key={v || 'todos'} type="button" aria-pressed={value === v} className={value === v ? 'activo' : ''} onClick={() => onChange(v)}>
+          {t}
+          {n !== undefined && <span className="segmentado-n">{n}</span>}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -36,35 +47,88 @@ export function VigenciaBadge({ valor }) {
   if (!valor) return <span className="text-muted">—</span>;
   const [a, m, d] = String(valor).slice(0, 10).split('-').map(Number);
   const dias = Math.floor((new Date(a, m - 1, d) - new Date(new Date().toDateString())) / 86400000);
-  const clase = dias < 0 ? 'text-danger fw-bold' : dias <= 30 ? 'text-warning fw-bold' : '';
-  const titulo = dias < 0 ? 'Vencida' : dias <= 30 ? `Vence en ${dias} día(s)` : '';
+  if (dias < 0) {
+    return (
+      <span className="pildora pildora-roja" title={`Vencida: venció hace ${-dias} día(s)`}>
+        <Icono nombre="alerta" size={13} /> {textoFecha(valor)}
+      </span>
+    );
+  }
+  if (dias <= 30) {
+    return (
+      <span className="pildora pildora-ambar" title={dias === 0 ? 'Vence hoy' : `Vence en ${dias} día(s)`}>
+        <Icono nombre="reloj" size={13} /> {textoFecha(valor)}
+      </span>
+    );
+  }
+  return <span>{textoFecha(valor)}</span>;
+}
+
+/**
+ * Encabezado (hero verde Nidec) + panel blanco con el contenido.
+ *  eyebrow:  texto pequeño sobre el título (ej. "Cómputo · Administrativo")
+ *  stats:    [{ label, value, nota, icono, tono: 'verde'|'ambar'|'rojo' }] tarjetas de resumen
+ *  action:   botón principal (ej. Agregar)
+ */
+export function PageCard({ title, subtitle, eyebrow, icon, action, stats, children, panelTitle, panelAction }) {
   return (
-    <span className={clase} title={titulo}>
-      {textoFecha(valor)}
-      {dias < 0 && <i className="fas fa-exclamation-circle ms-1" />}
-    </span>
+    <>
+      <HeroPagina title={title} subtitle={subtitle} eyebrow={eyebrow} icon={icon} action={action} stats={stats} />
+      <div className="contenedor sobre-hero">
+        <section className="panel">
+          {(panelTitle || panelAction) && (
+            <div className="panel-cabecera">
+              {panelTitle && <h2 className="panel-titulo">{panelTitle}</h2>}
+              {panelAction && <div className="ms-auto">{panelAction}</div>}
+            </div>
+          )}
+          {children}
+        </section>
+      </div>
+    </>
   );
 }
 
-export function PageCard({ title, action, children }) {
+/** Solo el encabezado verde (para páginas con su propio contenido, ej. Archivos o Mi perfil). */
+export function HeroPagina({ title, subtitle, eyebrow, icon, action, stats }) {
   return (
-    <div className="container">
-      <div className="page-inner">
-        <div className="row">
-          <div className="col-md-12">
-            <div className="card">
-              <div className="card-header">
-                <div className="d-flex align-items-center flex-wrap gap-2">
-                  <h4 className="card-title mb-0">{title}</h4>
-                  {action && <div className="ms-auto">{action}</div>}
-                </div>
-              </div>
-              <div className="card-body">{children}</div>
+    <>
+      <section className={`hero ${stats?.length ? '' : 'hero-compacto'}`}>
+        <div className="contenedor">
+          <div className="hero-fila">
+            <div className="hero-texto">
+              {eyebrow && <p className="hero-eyebrow">{eyebrow}</p>}
+              <h1 className="hero-titulo">
+                {icon && (
+                  <span className="hero-icono">
+                    <Icono nombre={icon} size={26} />
+                  </span>
+                )}
+                {title}
+              </h1>
+              {subtitle && <p className="hero-sub">{subtitle}</p>}
             </div>
+            {action && <div className="hero-accion">{action}</div>}
           </div>
+          {stats?.length > 0 && (
+            <div className="kpis">
+              {stats.map((k) => (
+                <div key={k.label} className={`kpi ${k.tono ? `kpi-${k.tono}` : ''}`}>
+                  {k.icono && (
+                    <span className="kpi-icono">
+                      <Icono nombre={k.icono} size={18} />
+                    </span>
+                  )}
+                  <span className="kpi-label">{k.label}</span>
+                  <strong className="kpi-valor">{k.value}</strong>
+                  {k.nota && <span className="kpi-nota">{k.nota}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }
 
@@ -80,32 +144,30 @@ export function FiltroEstado({ value, onChange, femenino = false }) {
 
 export function Buscador({ value, onChange, placeholder }) {
   return (
-    <input
-      type="search"
-      className="form-control"
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <label className="buscador">
+      <Icono nombre="buscar" size={18} />
+      <span className="visually-hidden">Buscar</span>
+      <input type="search" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </label>
   );
 }
 
 export function AccionesFila({ onVer, onEditar, onEliminar }) {
   return (
-    <div className="btn-group-gap">
+    <div className="acciones">
       {onVer && (
-        <button type="button" className="btn btn-sm btn-primary" title="Ver" onClick={onVer}>
-          <i className="fas fa-eye" />
+        <button type="button" className="btn-accion" title="Ver" aria-label="Ver detalles" onClick={onVer}>
+          <Icono nombre="ojo" size={17} />
         </button>
       )}
       {onEditar && (
-        <button type="button" className="btn btn-sm btn-warning" title="Editar" onClick={onEditar}>
-          <i className="fas fa-edit" />
+        <button type="button" className="btn-accion" title="Editar" aria-label="Editar" onClick={onEditar}>
+          <Icono nombre="editar" size={17} />
         </button>
       )}
       {onEliminar && (
-        <button type="button" className="btn btn-sm btn-danger" title="Eliminar" onClick={onEliminar}>
-          <i className="fas fa-trash" />
+        <button type="button" className="btn-accion btn-accion-peligro" title="Eliminar" aria-label="Eliminar" onClick={onEliminar}>
+          <Icono nombre="eliminar" size={17} />
         </button>
       )}
     </div>
@@ -146,7 +208,7 @@ export function Campo({ label, required, children, className = '' }) {
     <div className={`form-group ${className}`}>
       <label>
         {label}
-        {required && ' *'}
+        {required && <span className="obligatorio"> *</span>}
       </label>
       {children}
     </div>
@@ -170,22 +232,31 @@ export function CheckActivo({ checked, onChange, label }) {
 }
 
 /** Contenido del visor de archivo adjunto (imagen o documento). */
-export function VisorArchivo({ ruta, tipo, tituloDocumento = 'Documento' }) {
-  const url = urlArchivo(ruta);
-  if (!ruta) return <p className="text-muted mb-0">No hay archivo disponible.</p>;
-  if (tipo === 'image') return <img src={url} className="visor-imagen" alt="Vista" />;
+/**
+ * Vista previa de un archivo adjunto (responsiva):
+ *  - imágenes y PDF se muestran dentro de la ventana
+ *  - Word / Excel no se pueden previsualizar en el navegador: se ofrece abrir o descargar
+ * url: dirección para verlo · urlDescarga: dirección que fuerza la descarga
+ */
+export function VisorArchivo({ ruta, tipo, url, urlDescarga, nombre, tituloDocumento = 'Documento' }) {
+  const src = url || urlArchivo(ruta);
+  const descarga = urlDescarga || src;
+  if (!src) return <p className="text-muted mb-0">No hay archivo disponible.</p>;
+  const ext = String(ruta || '').split('.').pop().toLowerCase();
+  const clase = tipo === 'image' ? 'image' : tipo === 'pdf' || ext === 'pdf' ? 'pdf' : 'document';
+
+  if (clase === 'image') return <img src={src} className="visor-imagen" alt={tituloDocumento} />;
+  if (clase === 'pdf') return <VisorPdf url={src} titulo={tituloDocumento} />;
+  const icono = ['xls', 'xlsx'].includes(ext) ? 'fa-file-excel text-success' : ['doc', 'docx'].includes(ext) ? 'fa-file-word text-primary' : 'fa-file-alt';
   return (
     <div className="document-info">
       <div className="file-icon-lg">
-        <i className="fas fa-file-alt" />
+        <i className={`fas ${icono}`} />
       </div>
-      <h5>{tituloDocumento}</h5>
-      <p>Este documento se abrirá en una nueva ventana</p>
+      <h5>{nombre || tituloDocumento}</h5>
+      <p>Los archivos de Word y Excel no se pueden previsualizar en el navegador. Descárgalo para abrirlo.</p>
       <div className="d-flex gap-2 justify-content-center">
-        <a href={url} className="btn btn-primary" target="_blank" rel="noreferrer">
-          <i className="fas fa-external-link-alt me-1" /> Abrir documento
-        </a>
-        <a href={url} className="btn btn-success" download>
+        <a href={descarga} className="btn btn-success" download>
           <i className="fas fa-download me-1" /> Descargar
         </a>
       </div>
@@ -197,7 +268,7 @@ export function VisorArchivo({ ruta, tipo, tituloDocumento = 'Documento' }) {
 export function SoloLectura() {
   return (
     <span className="badge-solo-lectura" title="Tu perfil solo permite consultar la información">
-      <i className="fas fa-eye me-1" /> Solo lectura
+      <Icono nombre="ojo" size={16} /> Solo lectura
     </span>
   );
 }

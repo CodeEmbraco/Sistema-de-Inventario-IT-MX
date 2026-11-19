@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import usuariosRoutes from './routes/usuarios.js';
 import perfilRoutes from './routes/perfil.js';
 import impresorasRoutes from './routes/impresoras.js';
+import resumenRoutes from './routes/resumen.js';
 import archivosRoutes from './routes/archivos.js';
 import { crearRouterEquipos } from './routes/equipos.js';
 import { MODULOS } from './modulos.js';
@@ -33,6 +34,7 @@ app.use('/api/usuarios', requireAuth, requireAdmin, usuariosRoutes);
 for (const [clave, cfg] of Object.entries(MODULOS)) {
   app.use(`/api/${clave}`, requireAuth, requireInventario, soloAdminModifica, crearRouterEquipos(clave, cfg));
 }
+app.use('/api/resumen', requireAuth, requireInventario, resumenRoutes);
 app.use('/api/impresoras', requireAuth, requireInventario, soloAdminModifica, impresorasRoutes);
 app.use('/api/archivos', requireAuth, requireInventario, soloAdminModifica, archivosRoutes);
 

@@ -25,10 +25,8 @@ El sistema maneja dos plantas con información **totalmente separada**:
 | Usuarios (solo Administrador) | Nombre, usuario, contraseña, perfil, foto. Activar/desactivar |
 | Mi perfil | Cambiar foto y contraseña |
 | **Celulares** | Número de teléfono, usuario, departamento, marca, modelo, número de serie, IMEI, responsiva (archivo), fecha de asignación, número de ticket (opcional) |
-| **Equipo de cómputo administrativo** · submódulos **PC** y **Laptop** | Hostname, usuario, departamento, sistema operativo, procesador, HD, RAM, vigencia, adaptador cargador, número de ticket (los mismos campos en PC y Laptop) |
-| **Equipo de cómputo industrial** | Los mismos campos que el administrativo (con hostname y usuario) |
-| **Monitores** | Hostname, usuario, fecha de asignación, departamento, ubicación, marca, modelo, número de serie, vigencia, número de ticket |
-| **Proyectores** | Los mismos campos que monitores |
+| **Cómputo administrativo** · **PC** y **Laptop**, **Cómputo industrial**, **Monitores**, **Proyectores** | Los mismos campos en los cinco: hostname, usuario\*, departamento\*, sistema operativo\*, procesador\*, HD\*, RAM\*, número de serie\*, vigencia\*, modelo\*, marca\*, adaptador cargador\*, número de ticket (opcional), responsiva (opcional, con vista previa y descarga) y estado\* (Asignado / Sin asignar). \* = obligatorio |
+| **Inicio** | Resumen de la planta: equipos por módulo, vigencias vencidas y por vencer, calendario y actividad reciente |
 | Impresoras | Sin cambios: foto, IP y nivel de tóner por SNMP |
 | Archivos de auditoría | Sin cambios: explorador con carpetas, subir, copiar/cortar/pegar, renombrar, bitácora |
 
@@ -37,10 +35,9 @@ El sistema maneja dos plantas con información **totalmente separada**:
 Reglas de captura:
 
 - **Celulares**: marca, modelo, número de serie e IMEI siempre son obligatorios. Si está *Asignado*, también usuario, departamento y fecha de asignación.
-- **Cómputo administrativo / industrial**: departamento, sistema operativo, procesador, HD y RAM son obligatorios; si está *Asignado*, también el usuario. Hostname, vigencia, adaptador cargador y ticket son opcionales.
+- **Cómputo (PC, Laptop, industrial), monitores y proyectores**: todos los campos son obligatorios excepto hostname, número de ticket y responsiva.
 - **PC / Laptop**: en el menú, *Cómputo administrativo* se despliega en *PC* y *Laptop*. Cada submódulo muestra y registra solo sus equipos
   (se guardan en la misma tabla, columna `tipo_equipo`). Para pasar un equipo de PC a Laptop basta con editarlo (queda en el historial).
-- **Monitores / proyectores**: marca, modelo y número de serie son obligatorios. Si está *Asignado*, también usuario y fecha de asignación.
 - El número de serie (y el IMEI en celulares) no se puede repetir dentro de la misma planta.
 - La **vigencia** se muestra en rojo si ya venció y en amarillo si vence en los próximos 30 días.
 - Cada registro guarda un **historial de cambios** (quién y qué cambió), visible en "Ver detalles".
@@ -79,6 +76,8 @@ sistema-inventario-ti/
     ├── sis_invit_sqlserver.sql   Esquema para SQL Server (principal)
     ├── sis_invit_mysql.sql       El mismo esquema para MySQL/MariaDB
     ├── migracion_v3_*.sql        Actualiza una base v2 sin borrar datos (PC/Laptop, hostname, usuario)
+    ├── migracion_v4_*.sql        Actualiza una base v3: número de serie en cómputo
+    ├── migracion_v5_*.sql        Actualiza una base v3/v4 a v5 (campos iguales, responsiva, acceso a plantas)
     └── anterior/                 Esquema de la versión PHP (referencia)
 ```
 
@@ -145,7 +144,7 @@ Para usar MySQL/MariaDB en lugar de SQL Server: `DB_CLIENT=mysql`, `DB_PORT=3306
 ### Archivos subidos y logo
 
 - Los archivos se guardan en `server/storage/` (o en la carpeta de `STORAGE_DIR`).
-- Logo y fondo del login: copia `nidec.png` y `bg.jpg` a `client/public/assets/img/login/` y vuelve a ejecutar `npm run build`.
+- Logo y fondo del login: copia `logo.png` y `bg.jpg` a `client/public/assets/img/login/` y vuelve a ejecutar `npm run build`.
 
 ## Modo sin servidor (para probar solo el frontend)
 
@@ -196,6 +195,29 @@ npm run dev:client   # React con recarga en caliente en :5173 (abre esta)
 
 Todas las rutas (excepto login y regiones) exigen sesión y solo devuelven datos de la planta de la sesión.
 Las rutas `POST`, `PUT`, `PATCH` y `DELETE` de inventario, impresoras y archivos solo las puede usar el perfil Administrador.
+
+## Cambios en la versión 5
+
+- **Mismos campos** en Cómputo administrativo (PC y Laptop), Cómputo industrial, Monitores y Proyectores,
+  incluida la **responsiva** con vista previa (PDF e imágenes dentro del sistema, con pdf.js) y descarga.
+- **Perfiles**: el Administrador agrega, edita y elimina; el Usuario solo consulta (también lo valida el servidor).
+- **Cambio de planta**: los administradores entran a todas las plantas; a cada Usuario el administrador le marca
+  a qué plantas puede entrar. Se cambia desde el botón de planta de la barra superior, sin volver a escribir la contraseña.
+  El nombre de usuario ya no se puede repetir entre plantas.
+- **Nuevo diseño** con el Brand Toolkit de Nidec: login con mosaico, barra superior con módulos, pantalla de Inicio,
+  modo oscuro y fuentes Space Grotesk / Inter incluidas en el proyecto (funcionan sin internet).
+- Para poner una foto de planta en los encabezados: copia la imagen a `client/public/assets/img/marca/hero.jpg` y agrega
+  `:root { --hero-foto: url('/assets/img/marca/hero.jpg'); }` al final de `client/src/styles/nidec.css`.
+- **Actualizar la base**: ejecuta `database/migracion_v5_sqlserver.sql` (sirve desde la versión 3 o 4, no borra datos).
+  Después corre `npm run instalar` (hay dependencias nuevas en el cliente).
+
+## Cambios en la versión 4
+
+- **Responsiva**: vista previa dentro del sistema (PDF e imágenes), botón *Descargar* con nombre legible y *Abrir en otra pestaña*.
+  Word y Excel no se pueden previsualizar en el navegador: se descargan. Nueva ruta `GET /api/celulares/:id/archivo` (`?descargar=1`).
+- **Número de serie** en Cómputo administrativo (PC y Laptop) y Cómputo industrial. Si tu base ya está en v3, ejecuta `database/migracion_v4_sqlserver.sql`.
+- Script `server/scripts/cambiar-password.js` para poner la contraseña de un usuario directamente en la base (cifrada).
+- Vite usa el puerto 5173 (si usa el mismo que la API, 3001, las peticiones se ciclan y dan error 500).
 
 ## Cambios en la versión 3
 

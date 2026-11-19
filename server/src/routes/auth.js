@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { execute, query, queryOne } from '../db.js';
 import { ah, badRequest, HttpError } from '../lib/http.js';
-import { COOKIE_NAME, crearToken, opcionesCookie, requireAuth } from '../auth.js';
+import { COOKIE_NAME, crearToken, opcionesCookie, plantasDeUsuario, puedeEntrar, requireAuth } from '../auth.js';
 import { FOTO_DEFAULT } from '../config.js';
 
 const router = Router();
@@ -13,8 +13,9 @@ function ahoraLocal() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-export function usuarioPublico(u) {
+export function usuarioPublico(u, plantas) {
   return {
+    plantas, // plantas a las que puede cambiar
     id: u.id,
     nombre: u.nombre,
     usuario: u.usuario,
@@ -33,8 +34,9 @@ router.get(
 );
 
 /**
- * Inicia sesión en una planta. Los usuarios son de una sola planta, así que
- * "cambiar de región" es iniciar sesión con la cuenta de la otra planta.
+ * Inicia sesión en una planta.
+ * Se busca primero un usuario de esa planta; si no hay, un usuario de otra planta que tenga
+ * acceso a ella (los administradores entran a todas; a los usuarios se las asigna el administrador).
  */
 router.post(
   '/login',
@@ -47,20 +49,47 @@ router.post(
     const region = Number.isInteger(regionId) ? await queryOne('SELECT * FROM regiones WHERE id = ?', [regionId]) : null;
     if (!region) throw badRequest('Selecciona la planta');
 
-    const u = await queryOne('SELECT * FROM usuarios WHERE usuario = ? AND region_id = ?', [usuario, region.id]);
-    if (!u || u.usuario !== usuario) throw new HttpError(401, `El usuario no existe en ${region.nombre}`);
+    // Candidatos con ese usuario: primero el de la planta elegida
+    const candidatos = (await query('SELECT * FROM usuarios WHERE usuario = ?', [usuario]))
+      .filter((u) => u.usuario === usuario)
+      .sort((a, b) => (a.region_id === region.id ? -1 : 0) - (b.region_id === region.id ? -1 : 0));
+    if (!candidatos.length) throw new HttpError(401, 'El usuario no existe');
 
-    const valida = await bcrypt.compare(password, u.password).catch(() => false);
-    if (!valida) throw new HttpError(401, 'Error en la contraseña, vuelve a intentarlo');
-
+    let u = null;
+    for (const c of candidatos) {
+      if (await bcrypt.compare(password, c.password).catch(() => false)) {
+        u = c;
+        break;
+      }
+    }
+    if (!u) throw new HttpError(401, 'Error en la contraseña, vuelve a intentarlo');
     if (Number(u.estado) !== 1) throw new HttpError(403, 'El usuario aún no está activado');
+    if (!(await puedeEntrar(u, region.id))) {
+      throw new HttpError(403, `Tu usuario no tiene acceso a ${region.nombre}. Pide al administrador que te la asigne.`);
+    }
 
     await execute('UPDATE usuarios SET ultimo_login = ? WHERE id = ?', [ahoraLocal(), u.id]);
 
-    res.cookie(COOKIE_NAME, crearToken(u), opcionesCookie());
+    res.cookie(COOKIE_NAME, crearToken(u, region.id), opcionesCookie());
     res.json({
       status: 'success',
-      user: usuarioPublico({ ...u, region_clave: region.clave, region_nombre: region.nombre }),
+      user: usuarioPublico({ ...u, region_id: region.id, region_clave: region.clave, region_nombre: region.nombre }, await plantasDeUsuario(u)),
+    });
+  })
+);
+
+/** Cambia de planta sin volver a escribir la contraseña (si el usuario tiene acceso). */
+router.post(
+  '/cambiar-planta',
+  requireAuth,
+  ah(async (req, res) => {
+    const yo = { ...req.user, region_id: req.user.region_planta };
+    const planta = await puedeEntrar(yo, req.body?.region_id);
+    if (!planta) throw new HttpError(403, 'No tienes acceso a esa planta');
+    res.cookie(COOKIE_NAME, crearToken(yo, planta.id), opcionesCookie());
+    res.json({
+      status: 'success',
+      user: usuarioPublico({ ...req.user, region_id: planta.id, region_clave: planta.clave, region_nombre: planta.nombre }, await plantasDeUsuario(yo)),
     });
   })
 );
@@ -73,7 +102,14 @@ router.post('/logout', (req, res) => {
 // Sin sesión responde 200 con user: null (así el navegador no registra un error al abrir el login)
 router.get('/me', (req, res, next) => {
   if (!req.cookies?.[COOKIE_NAME]) return res.json({ status: 'success', user: null });
-  requireAuth(req, res, () => res.json({ status: 'success', user: usuarioPublico(req.user) })).catch(next);
+  requireAuth(req, res, async () => {
+    try {
+      const plantas = await plantasDeUsuario({ ...req.user, region_id: req.user.region_planta });
+      res.json({ status: 'success', user: usuarioPublico(req.user, plantas) });
+    } catch (e) {
+      next(e);
+    }
+  }).catch(next);
 });
 
 export default router;

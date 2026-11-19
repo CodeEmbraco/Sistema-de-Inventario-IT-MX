@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { HeroPagina } from '../components/ui.jsx';
 import { RUTA_INICIO } from '../modulos.js';
 import { Link } from 'react-router-dom';
 import { api, FOTO_DEFAULT, formatoFecha, urlArchivo } from '../api.js';
@@ -91,11 +92,13 @@ export default function Perfil() {
   }
 
   return (
-    <div className="container">
-      <div className="page-inner">
+    <>
+    <HeroPagina eyebrow="Tu cuenta" title="Mi perfil" icon="usuario" subtitle="Cambia tu foto y tu contraseña." />
+    <div className="contenedor sobre-hero">
+      <div className="panel">
         <div className="profile-container">
           <div className="profile-header">
-            <h1 className="h3 mb-3">Mi Perfil</h1>
+
             <div className="mb-3">
               <img
                 src={urlArchivo(perfil.foto) || FOTO_DEFAULT}
@@ -225,5 +228,6 @@ export default function Perfil() {
         </div>
       </div>
     </div>
+    </>
   );
 }

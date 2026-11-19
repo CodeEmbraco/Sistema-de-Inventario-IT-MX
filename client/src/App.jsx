@@ -8,10 +8,18 @@ import ModuloEquipos from './pages/ModuloEquipos.jsx';
 import Impresoras from './pages/Impresoras.jsx';
 import Archivos from './pages/Archivos.jsx';
 import NoEncontrado from './pages/NoEncontrado.jsx';
+import Inicio from './pages/Inicio.jsx';
 import { MODULOS, pantallas, RUTA_INICIO } from './modulos.js';
 
 // Se calcula una sola vez (los objetos `fijo` deben conservar su identidad entre renders)
 const PANTALLAS = pantallas();
+const EYEBROW = {
+  celulares: 'Inventario · Telefonía',
+  computo_administrativo: 'Inventario · Cómputo administrativo',
+  computo_industrial: 'Inventario · Cómputo',
+  monitores: 'Inventario · Periféricos',
+  proyectores: 'Inventario · Periféricos',
+};
 
 function SoloAdmin({ children }) {
   const { esAdmin } = useAuth();
@@ -23,8 +31,9 @@ export default function App() {
 
   if (cargando) {
     return (
-      <div className="d-flex vh-100 align-items-center justify-content-center">
-        <span className="spinner-border text-success" role="status" aria-label="Cargando" />
+      <div className="cargando-app">
+        <img src="/assets/img/marca/nidec-verde.png" alt="Nidec" />
+        <span className="spinner-border" role="status" aria-label="Cargando" />
       </div>
     );
   }
@@ -43,6 +52,7 @@ export default function App() {
       <Route element={<Layout key={user.region?.id} />}>
         <Route index element={<Navigate to={RUTA_INICIO} replace />} />
         <Route path="/login" element={<Navigate to={RUTA_INICIO} replace />} />
+        <Route path={RUTA_INICIO} element={<Inicio />} />
         <Route
           path="/usuarios"
           element={
@@ -53,7 +63,7 @@ export default function App() {
         />
         <Route path="/perfil" element={<Perfil />} />
         {PANTALLAS.map((p) => (
-          <Route key={p.ruta} path={p.ruta} element={<ModuloEquipos key={p.ruta} clave={p.clave} cfg={p.cfg} fijo={p.fijo} />} />
+          <Route key={p.ruta} path={p.ruta} element={<ModuloEquipos key={p.ruta} clave={p.clave} cfg={p.cfg} fijo={p.fijo} eyebrow={EYEBROW[p.clave]} />} />
         ))}
         {/* Módulos con submódulos: la ruta base abre el primero (ej. /computo-administrativo -> /pc) */}
         {Object.values(MODULOS)
